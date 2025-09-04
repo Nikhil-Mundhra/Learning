@@ -1,0 +1,3 @@
+[submodule "Operating-Systems"]
+	path = Operating-Systems
+	url = https://github.com/Nikhil-Mundhra/Operating-Systems.git
