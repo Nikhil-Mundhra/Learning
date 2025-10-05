@@ -1,1 +1,0 @@
-git submodule add https://github.com/Nikhil-Mundhra/Operating-Systems.git path/to/Operating-Systems
