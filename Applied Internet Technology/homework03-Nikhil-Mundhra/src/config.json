@@ -1,0 +1,9 @@
+{
+  "root_directory": "public",
+  "redirect_map": {
+    "/foo": "/index.html",
+    "/test": "/css/styles.css",
+    "/invalid": "/nonexist",
+    "/redirect1.html": "/redirect3.html"
+  }
+}

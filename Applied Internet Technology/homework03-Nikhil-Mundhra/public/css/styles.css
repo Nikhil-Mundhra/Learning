@@ -1,0 +1,9 @@
+h1 {
+    font-size: 50px;
+    font-family: Arial;
+}
+
+.center {
+    width: 400px;
+    margin: 0 auto;
+}
