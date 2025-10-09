@@ -1,0 +1,232 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{geometry}
+\usepackage{float}
+\geometry{a4paper, margin=1in}
+\usepackage{xcolor} 
+\usepackage{listings} 
+
+\definecolor{commentcolor}{rgb}{0.0, 0.5, 0.0} % Green for comments
+\definecolor{keywordcolor}{rgb}{0.0, 0.0, 1.0} % Blue for keywords
+\definecolor{stringcolor}{rgb}{0.58, 0.0, 0.82} % Purple for strings
+
+
+
+\title{Homework n°1}
+\author{Computer Systems Organization}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Binary Addition and Subtraction}
+
+$$
+\begin{array}{ccccccccc|c}
+  & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & \textcolor{blue}{= 1} \\
++ & 0 & 0 & 0 & 0 & 0 & 0 & 1 & 1 & \textcolor{blue}{= 3} \\
+\hline
+& 0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 & \textcolor{blue}{= 4} \\
+\end{array}
+$$
+
+
+Following this model (and, if necessary, using the negation trick) perform the calculations on the given 8-bit binary representations (assume two's complement representation for signed numbers). For each binary number write its decimal equivalent, and for each calculation explain if there is an overflow (wrap-around) or not. 
+
+
+
+\subsection{Unsigned addition}
+
+$$
+\begin{array}{ccccccccc|c}
+  & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 1 & \textcolor{blue}{ } \\
++ & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & \textcolor{blue}{ } \\
+\hline
+\end{array}
+$$
+
+\bigskip
+
+$$
+\begin{array}{ccccccccc|c}
+  & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & \textcolor{blue}{ } \\
++ & 1 & 1 & 1 & 1 & 1 & 1 & 1 & 0 & \textcolor{blue}{ } \\
+\hline
+\end{array}
+$$
+
+\bigskip
+
+
+\subsection{Signed addition}
+
+$$
+\begin{array}{ccccccccc|c}
+  & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & \textcolor{blue}{ } \\
++ & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & \textcolor{blue}{ } \\
+\hline
+\end{array}
+$$
+
+\bigskip
+
+
+$$
+\begin{array}{ccccccccc|c}
+  & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 1 & \textcolor{blue}{ } \\
++ & 0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 & \textcolor{blue}{ } \\
+\hline
+\end{array}
+$$
+
+\bigskip
+
+
+$$
+\begin{array}{ccccccccc|c}
+  & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & \textcolor{blue}{ } \\
++ & 1 & 1 & 1 & 1 & 1 & 1 & 1 & 0 & \textcolor{blue}{ } \\
+\hline
+\end{array}
+$$
+
+\bigskip
+
+\subsection{Unsigned subtraction}
+
+$$
+\begin{array}{ccccccccc|c}
+  & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & \textcolor{blue}{ } \\
+- & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & \textcolor{blue}{ } \\
+\hline
+\end{array}
+$$
+
+\bigskip
+
+$$
+\begin{array}{ccccccccc|c}
+  & 0 & 1 & 1 & 1 & 1 & 1 & 1 & 1 & \textcolor{blue}{ } \\
+- & 1 & 1 & 1 & 1 & 1 & 1 & 1 & 0 & \textcolor{blue}{ } \\
+\hline
+\end{array}
+$$
+
+\bigskip
+
+\subsection{Signed subtraction}
+
+$$
+\begin{array}{ccccccccc|c}
+  & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & \textcolor{blue}{ } \\
+- & 0 & 0 & 0 & 0 & 0 & 0 & 1 & 1 & \textcolor{blue}{ } \\
+\hline
+\end{array}
+$$
+
+\bigskip
+
+$$
+\begin{array}{ccccccccc|c}
+  & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & \textcolor{blue}{ } \\
+- & 1 & 1 & 1 & 1 & 1 & 1 & 1 & 1 & \textcolor{blue}{ } \\
+\hline
+\end{array}
+$$
+
+\bigskip
+
+
+$$
+\begin{array}{ccccccccc|c}
+  & 0 & 1 & 1 & 1 & 1 & 1 & 1 & 1 & \textcolor{blue}{ } \\
+- & 1 & 1 & 1 & 1 & 1 & 1 & 1 & 0 & \textcolor{blue}{ } \\
+\hline
+\end{array}
+$$
+
+\bigskip
+
+$$
+\begin{array}{ccccccccc|c}
+  & 1 & 0 & 0 & 0 & 0 & 0 & 0 & 0 & \textcolor{blue}{ } \\
+- & 0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 & \textcolor{blue}{ } \\
+\hline
+\end{array}
+$$
+
+\bigskip
+
+\section{Floating Point}
+
+
+In order to convert in binary  a decimal float number lesser than one (a fractional part of a decimal number), one can use its binary representation
+$$ \sum_{i=1}^{+\infty} 2^{-i} \times b_{i} \quad \text{where $b_{i}$ are the binary digits.} $$
+For instance, for the decimal number $0.1$, we obtain: 
+$$
+\begin{aligned}
+    0,1 &= 2^{-1} \times 0.2 \\
+        &= 2^{-2} \times 0.4 \\
+        &= 2^{-3} \times 0.8 \\
+        &= 2^{-4} \times 1.6 \\
+        &= 2^{-4}(1 + 0.6) \\
+        &= 2^{-4} + 2^{-4} \times 0.6 \\
+        &= 2^{-4} + 2^{-4}(2^{-1} \times 1.2) \\
+        &= 2^{-4} + 2^{-4} \times 2^{-1} \times 1.2 \\
+        &= 2^{-4} + 2^{-5} \times 1.2 \\
+        &= 2^{-4} + 2^{-5}(1 + 0.2)\\
+        &= 2^{-4} + 2^{-5} + 2^{-5}\times  0.2 \quad \text{ and so on}
+\end{aligned}
+$$
+
+Another method for converting the fractional part from decimal to binary is the multiplication conversion. This approach consists in repeatedly multiplying the fractional part by 2, and recording the integer part of the result as 1 at each step, 0 if it is less then 1. In other words, each time a 1 appears left of the decimal point after a multiplication, we write 1; otherwise, we write 0. When the result of the multiplication is exactly equal to 1.0, we stop, and we read the binary number from the top to the bottom.
+
+
+\begin{enumerate}
+\item Show that the multiplication conversion method is the same algorithm as the one used in the above example with 0.1, although presented in a different way (you may use an example). 
+
+\item Convert in binary the decimal number $0.11$. 
+
+\item Same question with $0.22$.
+
+\item Show that in the binary system $$0.1111111111111\dots = 1 $$.
+\end{enumerate}
+
+
+\section{Programming in C}
+
+\textbf{For the following questions, submit the source code files with the extension \texttt{.c}. Don't forget to test your functions in \texttt{main} to demonstrate that they work as expected.}
+
+\subsection{Functions that calculate the range}
+
+\begin{itemize}
+
+\item Write a C program that \textbf{prints} the minimum and maximum values without using the macros in \texttt{<limits.h>} for the following data types:
+
+\begin{itemize}
+\item \texttt{char} (both signed and unsigned)
+\item \texttt{short} (both signed and unsigned)
+\item \texttt{int} (both signed and unsigned)
+\end{itemize}
+
+\item Compare your calculated values with the values defined in \texttt{<limits.h>}.
+  
+\end{itemize}  
+
+
+\subsection{Pointers and Arrays}
+
+Assume you have two sorted integer arrays. The first array has enough unused space at its end to hold all elements of the second array. Write a function that merges the second array into the first one so that the resulting array remains sorted. Use pointer arithmetic and perform the merge \textbf{in-place\footnote{In-place means that the algorithm modifies the original data structure directly rather than creating and using an additional data structure of comparable size. You may use only a small, fixed amount of extra memory (if any) for temporary variables.}} (merge from the back).
+
+Assumptions:
+\begin{itemize}
+
+\item Array $a$ has $m$ valid elements followed by enough space for $n$ additional elements.
+    
+\item Array $b$ has $n$ elements.    
+        \end{itemize}  
+        
+\end{document}
