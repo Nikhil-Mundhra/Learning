@@ -11,7 +11,7 @@ Nikhil Mundhra
 
 Repository Link
 ---
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra
+https://github.com/Nikhil-Mundhra/Learning/tree/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra
 
 URL for deployed site 
 ---
@@ -51,17 +51,17 @@ First link to github line number(s) for constructor, HOF, etc.
 ---
 `routes/dashboard.mjs`  
 Array higher order function `map` used to transform raw Mongo `Task` documents into plain `displayTasks` for the dashboard, including tag and subtask preview objects.  
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/c7831927fd614d8d995031838bd4481cc0ef976f/routes/dashboard.mjs#L71
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/c7831927fd614d8d995031838bd4481cc0ef976f/routes/dashboard.mjs#L89
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/c7831927fd614d8d995031838bd4481cc0ef976f/routes/dashboard.mjs#L144
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/routes/dashboard.mjs#L71
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/routes/dashboard.mjs#L89
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/routes/dashboard.mjs#L144
 
 Second link to github line number(s) for constructor, HOF, etc.
 ---
 `public/js/dashboard.js`  
 Array higher order functions `forEach` and `map` used to attach event listeners to NodeLists (for tag color pickers, list icons, and tag pills) and to transform fetched JSON into the Vue dashboard state.  
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/75ced9f197d58603a7486854a39745c5673e9825/public/js/dashboard.js#L474
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/75ced9f197d58603a7486854a39745c5673e9825/public/js/dashboard.js#L481
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/75ced9f197d58603a7486854a39745c5673e9825/public/js/dashboard.js#L488
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/public/js/dashboard.js#L474
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/public/js/dashboard.js#L481
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/public/js/dashboard.js#L488
 
 
 Short description for links above
@@ -75,15 +75,15 @@ Link to github line number(s) for schemas (db.js or models folder)
 `db.mjs`  
 Schemas for `User`, `Settings`, `List`, `Task`, `Tag`, etc, are defined here using Mongoose, including relationships such as `Task` referencing `listId`, `userId`, and `tagIds`.  
 
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/f77b7ef088c573e47e2468d9ee0299408ff4adc6/db.mjs#L71
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/f77b7ef088c573e47e2468d9ee0299408ff4adc6/db.mjs#L92
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/f77b7ef088c573e47e2468d9ee0299408ff4adc6/db.mjs#L109
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/f77b7ef088c573e47e2468d9ee0299408ff4adc6/db.mjs#L154
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/f77b7ef088c573e47e2468d9ee0299408ff4adc6/db.mjs#L166
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/f77b7ef088c573e47e2468d9ee0299408ff4adc6/db.mjs#L181
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/f77b7ef088c573e47e2468d9ee0299408ff4adc6/db.mjs#L208
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/db.mjs#L71
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/db.mjs#L92
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/db.mjs#L109
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/db.mjs#L154
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/db.mjs#L166
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/db.mjs#L181
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/db.mjs#L208
 
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/main/db.mjs
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/db.mjs
 
 Description of research topics above with points
 ---
@@ -118,49 +118,49 @@ Links to github line number(s) for research topics described above (one link per
 
 Passport local strategy, bcrypt verification, serialization, and deserialization.
 routes/passport.mjs:8-67
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/f8b10215c510462420b79c3b0a4d843c68ee4667/routes/passport.mjs#L8
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/routes/passport.mjs#L8
 routes/auth.mjs:99-163
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/routes/auth.mjs#L99
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/routes/auth.mjs#L99
 routes/auth.mjs:292-318
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/routes/auth.mjs#L292
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/routes/auth.mjs#L292
 app.mjs:43-75
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/f8b10215c510462420b79c3b0a4d843c68ee4667/app.mjs#L51
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/app.mjs#L51
 
 2. **Parsley.js client side validation**  
 
 Parsley (global)
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/views/layout.hbs#L14
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/views/layout.hbs#L14
 
 "date not in the past" validator (layout.hbs#L26-35)
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/views/layout.hbs#L26-35
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/views/layout.hbs#L26-35
 
 Signup form with Parsley (signup.hbs#L35-80)
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/views/signup.hbs#L35
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/views/signup.hbs#L38
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/views/signup.hbs#L35
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/views/signup.hbs#L38
 
 Tasks Add Form (dashboard.hbs#L97-159)
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/57b832b73cef95005a21ccb2f98d3c2243634f92/views/dashboard.hbs#L99
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/views/dashboard.hbs#L99
 
 3. **Vue.js integration for dashboard state and interactions**  
 
 Vue 3 (global build, used on Dashboard)
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/views/layout.hbs#L43
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/views/layout.hbs#L43
 
 routes/dashboard.mjs:155-176
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/routes/dashboard.mjs#L155
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/routes/dashboard.mjs#L156
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/routes/dashboard.mjs#L155
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/routes/dashboard.mjs#L156
 
 public/js/dashboard.js:15-104
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/public/js/dashboard.js#L15
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/public/js/dashboard.js#L15
 * If Vue or the mount element is missing, skips
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/public/js/dashboard.js#L45
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/public/js/dashboard.js#L45
 * Extract the createApp function from the global Vue
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/public/js/dashboard.js#L47
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/public/js/dashboard.js#L47
 * Create Vue app instance
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/public/js/dashboard.js#L49
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/public/js/dashboard.js#L99
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/public/js/dashboard.js#L102
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/2948c8dc9438b937d5e0055570a864df2c8401df/public/js/dashboard.js#L103
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/public/js/dashboard.js#L49
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/public/js/dashboard.js#L99
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/public/js/dashboard.js#L102
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/public/js/dashboard.js#L103
 
 
 Optional project notes 
@@ -174,7 +174,7 @@ Open the Settings pages (/settings/profile, /settings/layout, /settings/notifica
 
 There are a few functional tests inside here as demos on usage:
 
-https://github.com/nyu-csci-ua-0467-001-002-fall-2025/final-project-Nikhil-Mundhra/blob/main/documentation/Testing
+https://github.com/Nikhil-Mundhra/Learning/blob/main/Applied%20Internet%20Technology/final-project-Nikhil-Mundhra/documentation/Testing
 
 
 Attributions
