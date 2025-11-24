@@ -1,10 +1,6 @@
 Milestone 04 - Final Project Documentation
 ===
 
-NetID
----
-nm4358
-
 Name
 ---
 Nikhil Mundhra
