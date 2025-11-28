@@ -1,0 +1,8 @@
+.clicker {
+    width: auto;
+    height: auto;
+    display: flex;
+    justify-content: center;
+    border: 0cap;
+    border-color: black;
+}
