@@ -12,3 +12,7 @@ npm start
 ```
 npm create vite@latest
 ```
+* Run with (in directory):
+```
+npm run dev
+```
