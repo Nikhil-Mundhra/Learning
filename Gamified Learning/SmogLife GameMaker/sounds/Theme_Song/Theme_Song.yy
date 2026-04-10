@@ -1,0 +1,25 @@
+{
+  "$GMSound":"",
+  "%Name":"Theme_Song",
+  "audioGroupId":{
+    "name":"audiogroup_default",
+    "path":"audiogroups/audiogroup_default",
+  },
+  "bitDepth":1,
+  "bitRate":128,
+  "compression":0,
+  "conversionMode":0,
+  "duration":128.6991,
+  "name":"Theme_Song",
+  "parent":{
+    "name":"Sounds",
+    "path":"folders/Sounds.yy",
+  },
+  "preload":false,
+  "resourceType":"GMSound",
+  "resourceVersion":"2.0",
+  "sampleRate":44100,
+  "soundFile":"Theme_Song.mp3",
+  "type":0,
+  "volume":0.8,
+}

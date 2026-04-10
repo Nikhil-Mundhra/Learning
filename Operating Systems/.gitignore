@@ -3,3 +3,8 @@ autocommit.pid
 autocommit.sh
 tempCodeRunnerFile.c
 tempCodeRunnerFile.sh
+*.pdf
+*.mp4
+*.HEIC
+*.jpeg
+*.png

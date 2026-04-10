@@ -17,6 +17,6 @@ Lecture Timings
 * Monday/Wednesday 10:30am–12pm; In Person
 
 Professor
-* Justin Cappos
+* Ping Ping Ding
 
 ## Course Description
