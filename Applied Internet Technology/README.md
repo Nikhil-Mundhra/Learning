@@ -2,17 +2,15 @@
 
 This directory contains full-stack web engineering projects, homework assignments, and prototyping labs completed as part of the Applied Internet Technology curriculum at NYU Tandon.
 
-## Core Tech Stack
+## Tech Stack
 
-<div align="center">
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
+![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socketdotio&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 
-<img src="../assets/tech/nodejs.svg" width="36" height="36" alt="Node.js" /> &nbsp;&nbsp;&nbsp;&nbsp;
-<img src="../assets/tech/express.svg" width="36" height="36" alt="Express.js" /> &nbsp;&nbsp;&nbsp;&nbsp;
-<img src="../assets/tech/mongodb.svg" width="36" height="36" alt="MongoDB" /> &nbsp;&nbsp;&nbsp;&nbsp;
-<img src="../assets/tech/socketio.svg" width="36" height="36" alt="Socket.io" /> &nbsp;&nbsp;&nbsp;&nbsp;
-<img src="../assets/tech/javascript.svg" width="36" height="36" alt="JavaScript" />
-
-</div>
+---
 
 ## Contents
 

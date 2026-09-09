@@ -1,53 +1,62 @@
 <div align="center">
 
-<img src="./assets/nyu_tandon_logo.png" alt="NYU Tandon School of Engineering" width="420" />
+<img src="./assets/nyu_tandon_logo.png" alt="NYU Tandon School of Engineering" width="400" />
 
 # Nikhil Mundhra
 ### Software Engineering & Computer Science Portfolio
 
-[![GitHub](https://img.shields.io/badge/GitHub-Nikhil--Mundhra-181717?style=for-the-badge&logo=github)](https://github.com/Nikhil-Mundhra)
-[![NYU Tandon](https://img.shields.io/badge/NYU-Tandon%20School%20of%20Engineering-57068c?style=for-the-badge)](https://engineering.nyu.edu/)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/mundhra-nikhil/)
+[![GitHub](https://img.shields.io/badge/GitHub-Profile-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Nikhil-Mundhra)
+[![Email](https://img.shields.io/badge/Email-nikhilmundhra28%40gmail.com-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:nikhilmundhra28@gmail.com)
+[![NYU Tandon](https://img.shields.io/badge/NYU%20Tandon-Computer%20Science-57068c?style=for-the-badge&logo=newyorkuniversity&logoColor=white)](https://engineering.nyu.edu/)
 
 <br />
 
-*Welcome to my software engineering portfolio. This repository brings together my full-stack web applications, game engines, interactive creative computing, and systems & data structures engineering work from NYU Tandon and independent projects.*
+*Welcome to my coursework and engineering portfolio. This repository showcases my full-stack web applications, game engines, interactive creative computing, and low-level systems & data structures work from NYU Tandon and independent learning.*
 
 </div>
 
 ---
 
-## 🛠️ Core Technologies & Tooling
+## 🛠️ Tech Stack
 
-<div align="center">
+### Languages
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+![C++](https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=cplusplus&logoColor=white)
+![C](https://img.shields.io/badge/C-A8B9CC?style=for-the-badge&logo=c&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![GML](https://img.shields.io/badge/GML-000000?style=for-the-badge&logo=gamemaker&logoColor=white)
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)
 
-| Language / Tool | Logo | Domain & Use Case |
-| :--- | :---: | :--- |
-| **C++** | <img src="./assets/tech/cpp.svg" width="26" height="26" alt="C++" /> | Data structures, tree traversals, priority queues |
-| **C** | <img src="./assets/tech/c.svg" width="26" height="26" alt="C" /> | Systems programming, pointer arithmetic, memory management |
-| **JavaScript (ES6+)** | <img src="./assets/tech/javascript.svg" width="26" height="26" alt="JavaScript" /> | Full-stack web development, asynchronous ES Modules |
-| **Node.js** | <img src="./assets/tech/nodejs.svg" width="26" height="26" alt="Node.js" /> | Server-side runtime, event loop, backend services |
-| **Express.js** | <img src="./assets/tech/express.svg" width="26" height="26" alt="Express.js" /> | RESTful API architecture, routing, middleware |
-| **MongoDB** | <img src="./assets/tech/mongodb.svg" width="26" height="26" alt="MongoDB" /> | Document database, Mongoose ODM schemas & indexing |
-| **Socket.io** | <img src="./assets/tech/socketio.svg" width="26" height="26" alt="Socket.io" /> | Real-time bi-directional WebSocket notifications |
-| **Python** | <img src="./assets/tech/python.svg" width="26" height="26" alt="Python" /> | Scripting, data pipelines, networking layers |
-| **Java** | <img src="./assets/tech/java.svg" width="26" height="26" alt="Java" /> | Object-oriented application fundamentals |
-| **p5.js** | <img src="./assets/tech/p5js.svg" width="26" height="26" alt="p5.js" /> | Generative computing, creative canvas rendering |
-| **GameMaker** | <img src="./assets/tech/gamemaker.svg" width="26" height="26" alt="GameMaker" /> | 2D game engine, GML scripting, simulation mechanics |
-| **Git** | <img src="./assets/tech/git.svg" width="26" height="26" alt="Git" /> | Version control, modular branch workflows |
+### Backend & Web Engineering
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)
+![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=for-the-badge&logo=socketdotio&logoColor=white)
+![REST API](https://img.shields.io/badge/REST_API-FF6C37?style=for-the-badge&logo=postman&logoColor=white)
 
-</div>
+### Databases
+![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
+![Mongoose](https://img.shields.io/badge/Mongoose-880000?style=for-the-badge&logo=mongoose&logoColor=white)
+
+### Tools & Creative Tech
+![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
+![VS Code](https://img.shields.io/badge/VS_Code-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
+![p5.js](https://img.shields.io/badge/p5.js-ED225D?style=for-the-badge&logo=p5dotjs&logoColor=white)
 
 ---
 
 ## 📌 Featured Projects
 
 | Project | Domain | Stack | Highlights |
-| :--- | :--- | :---: | :--- |
-| [**Cool Reminders**](./Applied%20Internet%20Technology/final-project-Nikhil-Mundhra) | Full-Stack Web App | <img src="./assets/tech/nodejs.svg" width="18" height="18" /> <img src="./assets/tech/express.svg" width="18" height="18" /> <img src="./assets/tech/mongodb.svg" width="18" height="18" /> <img src="./assets/tech/socketio.svg" width="18" height="18" /> | Dynamic priority reminders, real-time WebSocket updates, subtasks, custom theming, and secure session authentication. |
-| [**SmogLife**](./Gamified%20Learning/SmogLife%20GameMaker) | Game Development | <img src="./assets/tech/gamemaker.svg" width="18" height="18" /> | 2D educational game raising environmental awareness with interactive gameplay mechanics and puzzle design. |
-| [**Interactive Creative Computing**](./Interactive%20Media) | Creative Computing | <img src="./assets/tech/p5js.svg" width="18" height="18" /> <img src="./assets/tech/javascript.svg" width="18" height="18" /> | Generative art sketches and responsive interactive self-portrait built with the p5 canvas library. |
-| [**Core Data Structures & Algorithms**](./Data_Structures) | Systems & DS | <img src="./assets/tech/cpp.svg" width="18" height="18" /> <img src="./assets/tech/c.svg" width="18" height="18" /> | Custom implementations of Binary Search Trees (BST), Max Heaps, and Hash Tables with collision resolution. |
-| [**NYUAD QC Hackathon Showcase**](./NYUAD_QC_Hackathon) | Quantum Computing | <img src="./assets/nyuad_logo.svg" width="70" alt="NYUAD" /> | Quantum Computing Hackathon project exploration and nomination showcase at NYU Abu Dhabi. |
+| :--- | :--- | :--- | :--- |
+| [**Cool Reminders**](./Applied%20Internet%20Technology/final-project-Nikhil-Mundhra) | Full-Stack Web App | ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=nodedotjs&logoColor=white) ![Express](https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white) ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat-square&logo=mongodb&logoColor=white) ![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=flat-square&logo=socketdotio&logoColor=white) | Dynamic priority reminders, real-time WebSocket updates, subtasks, custom theming, and secure session authentication. |
+| [**SmogLife**](./Gamified%20Learning/SmogLife%20GameMaker) | Game Development | ![GML](https://img.shields.io/badge/GML-000000?style=flat-square&logo=gamemaker&logoColor=white) | 2D educational game raising environmental awareness with interactive gameplay mechanics and puzzle design. |
+| [**Interactive Creative Computing**](./Interactive%20Media) | Creative Computing | ![p5.js](https://img.shields.io/badge/p5.js-ED225D?style=flat-square&logo=p5dotjs&logoColor=white) ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black) | Generative art sketches and responsive interactive self-portrait built with the p5 canvas library. |
+| [**Core Data Structures & Algorithms**](./Data_Structures) | Systems & DS | ![C++](https://img.shields.io/badge/C++-00599C?style=flat-square&logo=cplusplus&logoColor=white) ![C](https://img.shields.io/badge/C-A8B9CC?style=flat-square&logo=c&logoColor=white) | Custom implementations of Binary Search Trees (BST), Max Heaps, and Hash Tables with collision resolution. |
+| [**NYUAD QC Hackathon Showcase**](./NYUAD_QC_Hackathon) | Quantum Computing | ![NYUAD](https://img.shields.io/badge/NYUAD-Quantum-57068c?style=flat-square) | Quantum Computing Hackathon project exploration and nomination showcase at NYU Abu Dhabi. |
 
 ---
 
@@ -136,10 +145,10 @@ Creative programming projects exploring canvas manipulation and algorithmic grap
 
 ```text
 .
-├── assets/                          # Authentic institution logos & official tech SVGs
+├── assets/                          # Authentic institution logos & project media
 │   ├── nyu_tandon_logo.png          # Official NYU Tandon School of Engineering logo
 │   ├── nyuad_logo.svg               # Official NYU Abu Dhabi logo
-│   └── tech/                        # Official vector SVGs (C++, Node, MongoDB, etc.)
+│   └── smoglife-sprites.webp        # SmogLife character animation sheet
 ├── Applied Internet Technology/     # Full-stack web engineering
 │   ├── final-project-Nikhil-Mundhra # "Cool Reminders" flagship full-stack web app
 │   ├── homework01-Nikhil-Mundhra    # Interactive CLI Tic-Tac-Toe engine
@@ -200,7 +209,10 @@ npx serve "Interactive Media/Self-portrait"
 
 ---
 
-## 📬 Contact & Connect
+## 📫 Connect With Me
 
-- **GitHub**: [@Nikhil-Mundhra](https://github.com/Nikhil-Mundhra)
-- **Institution**: New York University (NYU Tandon School of Engineering)
+| Platform | Link |
+|---|---|
+| 💼 LinkedIn | [linkedin.com/in/mundhra-nikhil](https://www.linkedin.com/in/mundhra-nikhil/) |
+| 🐙 GitHub | [github.com/Nikhil-Mundhra](https://github.com/Nikhil-Mundhra) |
+| 📧 Email | [nikhilmundhra28@gmail.com](mailto:nikhilmundhra28@gmail.com) |
