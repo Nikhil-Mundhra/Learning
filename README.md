@@ -1,42 +1,39 @@
 <div align="center">
 
-<img src="./assets/banner.jpg" alt="Nikhil Mundhra - Software Engineer & Computer Science Student" width="100%" />
+<img src="./assets/nyu_tandon_logo.png" alt="NYU Tandon School of Engineering" width="420" />
 
-<br /><br />
+# Nikhil Mundhra
+### Software Engineering & Computer Science Portfolio
 
 [![GitHub](https://img.shields.io/badge/GitHub-Nikhil--Mundhra-181717?style=for-the-badge&logo=github)](https://github.com/Nikhil-Mundhra)
-[![NYU Tandon](https://img.shields.io/badge/NYU%20Tandon-Computer%20Science-57068c?style=for-the-badge&logo=newyorkuniversity&logoColor=white)](https://engineering.nyu.edu/)
-[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
-[![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)](https://isocpp.org/)
-[![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![NYU Tandon](https://img.shields.io/badge/NYU-Tandon%20School%20of%20Engineering-57068c?style=for-the-badge)](https://engineering.nyu.edu/)
 
 <br />
 
-**Software Engineer | Computer Science at New York University (NYU Tandon)**  
-*Building full-stack web applications, game engines, interactive creative computing, and systems software.*
+*Welcome to my software engineering portfolio. This repository brings together my full-stack web applications, game engines, interactive creative computing, and systems & data structures engineering work from NYU Tandon and independent projects.*
 
 </div>
 
 ---
 
-## 🛠️ Tech Stack & Tooling
+## 🛠️ Core Technologies & Tooling
 
 <div align="center">
 
-<a href="https://skillicons.dev">
-  <img src="https://skillicons.dev/icons?i=js,nodejs,express,mongodb,cpp,c,java,python,html,css,react,vite,git,github,vscode" alt="Tech Stack Icons" />
-</a>
-
-<br /><br />
-
-| Category | Technologies |
-| :--- | :--- |
-| **Languages** | JavaScript (ES6+ / ESM), C, C++, Java, Python, HTML5, CSS3, SQL |
-| **Backend & Web** | Node.js, Express.js, Socket.io, Mongoose ODM, RESTful APIs |
-| **Databases** | MongoDB |
-| **Creative & Game Engines** | p5.js, GameMaker Studio, GML |
-| **Systems & Development Tools** | Git, GitHub, Linux/macOS CLI, GCC, Clang, GDB, LLDB, Vite |
-| **Core Foundations** | Data Structures (BST, Max Heaps, Hash Tables), Computer Systems Organization (CSO), Operating Systems, Algorithmic Analysis |
+| Language / Tool | Logo | Domain & Use Case |
+| :--- | :---: | :--- |
+| **C++** | <img src="./assets/tech/cpp.svg" width="26" height="26" alt="C++" /> | Data structures, tree traversals, priority queues |
+| **C** | <img src="./assets/tech/c.svg" width="26" height="26" alt="C" /> | Systems programming, pointer arithmetic, memory management |
+| **JavaScript (ES6+)** | <img src="./assets/tech/javascript.svg" width="26" height="26" alt="JavaScript" /> | Full-stack web development, asynchronous ES Modules |
+| **Node.js** | <img src="./assets/tech/nodejs.svg" width="26" height="26" alt="Node.js" /> | Server-side runtime, event loop, backend services |
+| **Express.js** | <img src="./assets/tech/express.svg" width="26" height="26" alt="Express.js" /> | RESTful API architecture, routing, middleware |
+| **MongoDB** | <img src="./assets/tech/mongodb.svg" width="26" height="26" alt="MongoDB" /> | Document database, Mongoose ODM schemas & indexing |
+| **Socket.io** | <img src="./assets/tech/socketio.svg" width="26" height="26" alt="Socket.io" /> | Real-time bi-directional WebSocket notifications |
+| **Python** | <img src="./assets/tech/python.svg" width="26" height="26" alt="Python" /> | Scripting, data pipelines, networking layers |
+| **Java** | <img src="./assets/tech/java.svg" width="26" height="26" alt="Java" /> | Object-oriented application fundamentals |
+| **p5.js** | <img src="./assets/tech/p5js.svg" width="26" height="26" alt="p5.js" /> | Generative computing, creative canvas rendering |
+| **GameMaker** | <img src="./assets/tech/gamemaker.svg" width="26" height="26" alt="GameMaker" /> | 2D game engine, GML scripting, simulation mechanics |
+| **Git** | <img src="./assets/tech/git.svg" width="26" height="26" alt="Git" /> | Version control, modular branch workflows |
 
 </div>
 
@@ -44,13 +41,13 @@
 
 ## 📌 Featured Projects
 
-| Project | Domain | Tech Stack | Highlights |
-| :--- | :--- | :--- | :--- |
-| [**Cool Reminders**](./Applied%20Internet%20Technology/final-project-Nikhil-Mundhra) | Full-Stack Web App | Node.js, Express, MongoDB, Socket.io | Dynamic priority reminders, real-time WebSocket updates, subtasks, custom theming, and secure session authentication. |
-| [**SmogLife**](./Gamified%20Learning/SmogLife%20GameMaker) | Game Development | GameMaker Studio, GML | 2D educational game raising environmental awareness with interactive gameplay mechanics and puzzle design. |
-| [**Interactive Creative Computing**](./Interactive%20Media) | Creative Computing | p5.js, JavaScript, HTML5/CSS3 | Generative art sketches and responsive interactive self-portrait built with the p5 canvas library. |
-| [**Core Data Structures & Algorithms**](./Data_Structures) | Systems & DS | C++, C | Custom implementations of Binary Search Trees (BST), Max Heaps, and Hash Tables with collision resolution. |
-| [**NYUAD QC Hackathon Showcase**](./NYUAD_QC_Hackathon) | Quantum Computing | Quantum Algorithms | Quantum Computing Hackathon project exploration and nomination showcase at NYU Abu Dhabi. |
+| Project | Domain | Stack | Highlights |
+| :--- | :--- | :---: | :--- |
+| [**Cool Reminders**](./Applied%20Internet%20Technology/final-project-Nikhil-Mundhra) | Full-Stack Web App | <img src="./assets/tech/nodejs.svg" width="18" height="18" /> <img src="./assets/tech/express.svg" width="18" height="18" /> <img src="./assets/tech/mongodb.svg" width="18" height="18" /> <img src="./assets/tech/socketio.svg" width="18" height="18" /> | Dynamic priority reminders, real-time WebSocket updates, subtasks, custom theming, and secure session authentication. |
+| [**SmogLife**](./Gamified%20Learning/SmogLife%20GameMaker) | Game Development | <img src="./assets/tech/gamemaker.svg" width="18" height="18" /> | 2D educational game raising environmental awareness with interactive gameplay mechanics and puzzle design. |
+| [**Interactive Creative Computing**](./Interactive%20Media) | Creative Computing | <img src="./assets/tech/p5js.svg" width="18" height="18" /> <img src="./assets/tech/javascript.svg" width="18" height="18" /> | Generative art sketches and responsive interactive self-portrait built with the p5 canvas library. |
+| [**Core Data Structures & Algorithms**](./Data_Structures) | Systems & DS | <img src="./assets/tech/cpp.svg" width="18" height="18" /> <img src="./assets/tech/c.svg" width="18" height="18" /> | Custom implementations of Binary Search Trees (BST), Max Heaps, and Hash Tables with collision resolution. |
+| [**NYUAD QC Hackathon Showcase**](./NYUAD_QC_Hackathon) | Quantum Computing | <img src="./assets/nyuad_logo.svg" width="70" alt="NYUAD" /> | Quantum Computing Hackathon project exploration and nomination showcase at NYU Abu Dhabi. |
 
 ---
 
@@ -97,7 +94,7 @@ graph LR
 An interactive 2D narrative game built to teach atmospheric science and pollution mitigation through playful mechanics:
 
 <div align="center">
-  <img src="./assets/smoglife-sprites.webp" alt="SmogLife Character Sprite Animations" width="80%" />
+  <img src="./assets/smoglife-sprites.webp" alt="SmogLife Character Sprite Animations" width="75%" />
   <p><em>SmogLife Character Animation & Directional Sprite Sequence</em></p>
 </div>
 
@@ -126,7 +123,7 @@ graph TD
 
 ---
 
-### 4. Interactive Media & Generative Computing
+### 4. Interactive Media & Creative Computing
 > **Path**: [`Interactive Media`](./Interactive%20Media)
 
 Creative programming projects exploring canvas manipulation and algorithmic graphics:
@@ -139,7 +136,10 @@ Creative programming projects exploring canvas manipulation and algorithmic grap
 
 ```text
 .
-├── assets/                          # Portfolio media, hero banner & project illustrations
+├── assets/                          # Authentic institution logos & official tech SVGs
+│   ├── nyu_tandon_logo.png          # Official NYU Tandon School of Engineering logo
+│   ├── nyuad_logo.svg               # Official NYU Abu Dhabi logo
+│   └── tech/                        # Official vector SVGs (C++, Node, MongoDB, etc.)
 ├── Applied Internet Technology/     # Full-stack web engineering
 │   ├── final-project-Nikhil-Mundhra # "Cool Reminders" flagship full-stack web app
 │   ├── homework01-Nikhil-Mundhra    # Interactive CLI Tic-Tac-Toe engine

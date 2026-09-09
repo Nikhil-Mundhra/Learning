@@ -2,6 +2,18 @@
 
 This directory contains full-stack web engineering projects, homework assignments, and prototyping labs completed as part of the Applied Internet Technology curriculum at NYU Tandon.
 
+## Core Tech Stack
+
+<div align="center">
+
+<img src="../assets/tech/nodejs.svg" width="36" height="36" alt="Node.js" /> &nbsp;&nbsp;&nbsp;&nbsp;
+<img src="../assets/tech/express.svg" width="36" height="36" alt="Express.js" /> &nbsp;&nbsp;&nbsp;&nbsp;
+<img src="../assets/tech/mongodb.svg" width="36" height="36" alt="MongoDB" /> &nbsp;&nbsp;&nbsp;&nbsp;
+<img src="../assets/tech/socketio.svg" width="36" height="36" alt="Socket.io" /> &nbsp;&nbsp;&nbsp;&nbsp;
+<img src="../assets/tech/javascript.svg" width="36" height="36" alt="JavaScript" />
+
+</div>
+
 ## Contents
 
 - [**final-project-Nikhil-Mundhra**](./final-project-Nikhil-Mundhra): **Cool Reminders** — A production-ready full-stack productivity web application built with Node.js, Express, MongoDB/Mongoose, Socket.io, dynamic themes, and user authentication.
@@ -13,9 +25,3 @@ This directory contains full-stack web engineering projects, homework assignment
   - Socket.io bidirectional event broadcasting
   - AJAX and Fetch API data pipelines
   - Authentication and session handling workflows
-
-## Tech Stack
-- **JavaScript**: ES6+ modules (`.mjs`), Node.js runtime
-- **Frameworks**: Express.js, Socket.io
-- **Database**: MongoDB with Mongoose ODM
-- **Frontend**: HTML5, CSS3, DOM scripting, React
