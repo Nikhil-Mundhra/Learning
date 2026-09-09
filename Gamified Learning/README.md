@@ -8,6 +8,11 @@ Projects and prototypes exploring how interactive gameplay mechanics and gamific
 
 **SmogLife** is an interactive 2D narrative game built in GameMaker Studio. The player navigates an urban environment combating air pollution challenges through puzzles and active decision-making.
 
+<div align="center">
+  <img src="../assets/smoglife-sprites.webp" alt="SmogLife Character Sprites" width="80%" />
+  <p><em>SmogLife Character Animation & Directional Sprite Sequence</em></p>
+</div>
+
 ### Key Highlights
 - **Game Engine**: GameMaker Studio (GML scripting).
 - **Architecture**: Object-oriented event loops controlling player movement, interactive environmental triggers, collision detection, and level transitions.
