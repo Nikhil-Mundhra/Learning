@@ -1,27 +1,21 @@
-## Project Information
+# Applied Internet Technology (AIT)
 
-Labs
-* 
+This directory contains full-stack web engineering projects, homework assignments, and prototyping labs completed as part of the Applied Internet Technology curriculum at NYU Tandon.
 
-Programming (JavaScript, HTML, and CSS)
-* 4 assignments requiring hands on web development exploring new technologies
+## Contents
 
-## Course Information
+- [**final-project-Nikhil-Mundhra**](./final-project-Nikhil-Mundhra): **Cool Reminders** — A production-ready full-stack productivity web application built with Node.js, Express, MongoDB/Mongoose, Socket.io, dynamic themes, and user authentication.
+- [**homework01-Nikhil-Mundhra**](./homework01-Nikhil-Mundhra): Interactive CLI Tic-Tac-Toe engine in JavaScript with custom game board logic and automated test suites.
+- [**homework02-Nikhil-Mundhra**](./homework02-Nikhil-Mundhra): Express web server with SVG data visualization and dynamic routing.
+- [**homework03-Nikhil-Mundhra**](./homework03-Nikhil-Mundhra): Client-server web application featuring RESTful API patterns and interactive frontend views.
+- [**Practice**](./Practice): Experimental prototypes and lab exercises covering:
+  - React components and state management
+  - Socket.io bidirectional event broadcasting
+  - AJAX and Fetch API data pipelines
+  - Authentication and session handling workflows
 
-Location
-* New York University Courant School of Mathematics
-* Department of Computer Science and Engineering
-
-Course Title & Number
-* AIT Applied Internet Technology
-
-Semester
-* Fall 2025
-
-Lecture Timings
-* Monday/Wednesday 12:15pm–1:45pm; In Person
-
-Professor
-* Joe Versoza
-
-## Course Description
+## Tech Stack
+- **JavaScript**: ES6+ modules (`.mjs`), Node.js runtime
+- **Frameworks**: Express.js, Socket.io
+- **Database**: MongoDB with Mongoose ODM
+- **Frontend**: HTML5, CSS3, DOM scripting, React
