@@ -30,8 +30,6 @@
 </table>
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/mundhra-nikhil/) [![GitHub](https://img.shields.io/badge/GitHub-Profile-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Nikhil-Mundhra) [![Email](https://img.shields.io/badge/Email-nikhil.mundhra%40nyu.edu-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:nikhil.mundhra@nyu.edu) [![Last Commit](https://img.shields.io/github/last-commit/Nikhil-Mundhra/Learning?style=for-the-badge&label=Last%20Updated&color=57068c)](https://github.com/Nikhil-Mundhra/Learning)
-<br />
-[![NYU Abu Dhabi](https://img.shields.io/badge/NYU%20Abu%20Dhabi-Home%20Campus%20•%20BSc%20CS%20%26%20Econ%2FMath-57068c?style=for-the-badge&logo=newyorkuniversity&logoColor=white)](https://nyuad.nyu.edu/) [![NYU Paris](https://img.shields.io/badge/NYU%20Paris-Study%20Away-57068c?style=for-the-badge&logo=newyorkuniversity&logoColor=white)](https://www.nyu.edu/paris.html) [![NYU Tandon](https://img.shields.io/badge/NYU%20Tandon-Study%20Away%20•%20Engineering-57068c?style=for-the-badge&logo=newyorkuniversity&logoColor=white)](https://engineering.nyu.edu/) [![NYU CAS](https://img.shields.io/badge/NYU%20CAS-Study%20Away%20•%20Arts%20%26%20Science-57068c?style=for-the-badge&logo=newyorkuniversity&logoColor=white)](https://cas.nyu.edu/)
 
 <br />
 
