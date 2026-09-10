@@ -6,11 +6,13 @@
 
 <table border="0" cellpadding="10" cellspacing="0">
   <tr>
-    <td align="center">
+    <td align="center" colspan="3">
       <a href="https://nyuad.nyu.edu/">
-        <img src="./assets/nyuad_logo.svg" alt="NYU Abu Dhabi" height="48" />
+        <img src="./assets/nyuad_logo.svg" alt="NYU Abu Dhabi" height="52" />
       </a>
     </td>
+  </tr>
+  <tr>
     <td align="center">
       <a href="https://www.nyu.edu/paris.html">
         <img src="./assets/nyu_paris_logo.png" alt="NYU Paris" height="40" />
