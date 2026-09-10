@@ -1,18 +1,35 @@
 <div align="center">
 
-<a href="https://nyuad.nyu.edu/"><img src="./assets/nyuad_logo.svg" alt="NYU Abu Dhabi" height="52" valign="middle" /></a>
-&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="https://www.nyu.edu/paris.html"><img src="./assets/nyu_paris_logo.png" alt="NYU Paris" height="52" valign="middle" /></a>
-&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="https://engineering.nyu.edu/"><img src="./assets/nyu_tandon_logo.png" alt="NYU Tandon School of Engineering" height="52" valign="middle" /></a>
-&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="https://cas.nyu.edu/"><img src="./assets/nyu_cas_logo.png" alt="NYU College of Arts & Science" height="52" valign="middle" /></a>
-
 # Nikhil Mundhra
 ### BSc in Computer Science with Economics & Applied Math — NYU Abu Dhabi
 #### Global Coursework & Engineering Portfolio across NYU Abu Dhabi • NYU Paris • NYU Tandon • NYU CAS
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/mundhra-nikhil/) [![GitHub](https://img.shields.io/badge/GitHub-Profile-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Nikhil-Mundhra) [![Email](https://img.shields.io/badge/Email-nikhil.mundhra%40nyu.edu-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:nikhil.mundhra@nyu.edu)
+<table border="0" cellpadding="10" cellspacing="0">
+  <tr>
+    <td align="center">
+      <a href="https://nyuad.nyu.edu/">
+        <img src="./assets/nyuad_logo.svg" alt="NYU Abu Dhabi" height="48" />
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://www.nyu.edu/paris.html">
+        <img src="./assets/nyu_paris_logo.png" alt="NYU Paris" height="40" />
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://engineering.nyu.edu/">
+        <img src="./assets/nyu_tandon_logo.png" alt="NYU Tandon School of Engineering" height="40" />
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://cas.nyu.edu/">
+        <img src="./assets/nyu_cas_logo.png" alt="NYU College of Arts & Science" height="40" />
+      </a>
+    </td>
+  </tr>
+</table>
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/mundhra-nikhil/) [![GitHub](https://img.shields.io/badge/GitHub-Profile-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Nikhil-Mundhra) [![Email](https://img.shields.io/badge/Email-nikhil.mundhra%40nyu.edu-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:nikhil.mundhra@nyu.edu) [![Last Commit](https://img.shields.io/github/last-commit/Nikhil-Mundhra/Learning?style=for-the-badge&label=Last%20Updated&color=57068c)](https://github.com/Nikhil-Mundhra/Learning)
 <br />
 [![NYU Abu Dhabi](https://img.shields.io/badge/NYU%20Abu%20Dhabi-Home%20Campus%20•%20BSc%20CS%20%26%20Econ%2FMath-57068c?style=for-the-badge&logo=newyorkuniversity&logoColor=white)](https://nyuad.nyu.edu/) [![NYU Paris](https://img.shields.io/badge/NYU%20Paris-Study%20Away-57068c?style=for-the-badge&logo=newyorkuniversity&logoColor=white)](https://www.nyu.edu/paris.html) [![NYU Tandon](https://img.shields.io/badge/NYU%20Tandon-Study%20Away%20•%20Engineering-57068c?style=for-the-badge&logo=newyorkuniversity&logoColor=white)](https://engineering.nyu.edu/) [![NYU CAS](https://img.shields.io/badge/NYU%20CAS-Study%20Away%20•%20Arts%20%26%20Science-57068c?style=for-the-badge&logo=newyorkuniversity&logoColor=white)](https://cas.nyu.edu/)
 
@@ -55,13 +72,15 @@
 
 | Project | Domain / Campus | Stack | Highlights |
 | :--- | :--- | :--- | :--- |
-| **Retinal OCTA Deep Learning** | Computer Vision / ML <br /> *(NYUAD Capstone)* | ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white) ![PyTorch](https://img.shields.io/badge/Deep_Learning-3D_CNN-EE4C2C?style=flat-square) ![U-Net](https://img.shields.io/badge/U--Net-Segmentation-008080?style=flat-square) | Computer vision research at NYUAD Center for Brain and Health; end-to-end deep learning pipelines to preprocess 3D DICOM volumes and segment retinal microvascular features. |
+| [**Retinal OCTA Deep Learning**](https://github.com/Nikhil-Mundhra/OCT-Analyser-Capstone) | Computer Vision / ML <br /> *(NYUAD Capstone)* | ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white) ![PyTorch](https://img.shields.io/badge/Deep_Learning-3D_CNN-EE4C2C?style=flat-square) ![U-Net](https://img.shields.io/badge/U--Net-Segmentation-008080?style=flat-square) | Computer vision research at NYUAD Center for Brain and Health; end-to-end deep learning pipelines to preprocess 3D DICOM volumes and segment retinal microvascular features. |
 | [**Cool Reminders**](./Applied%20Internet%20Technology/final-project-Nikhil-Mundhra) | Full-Stack Web App <br /> *(NYU CAS • CSCI-UA 467)* | ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=nodedotjs&logoColor=white) ![Express](https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white) ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat-square&logo=mongodb&logoColor=white) ![Socket.io](https://img.shields.io/badge/Socket.io-010101?style=flat-square&logo=socketdotio&logoColor=white) | Dynamic priority reminders, real-time WebSocket updates, subtasks, custom theming, and secure session authentication. |
-| **VivahGo Planners** | AI SaaS Platform <br /> *(Solo Founder)* | ![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white) ![React](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black) ![AI](https://img.shields.io/badge/AI-SaaS-FF6C37?style=flat-square) | Full-stack architecture, backend, frontend UI/UX, and third-party integrations for an AI-driven wedding workspace platform. |
+| [**VivahGo Planners**](https://github.com/Nikhil-Mundhra/VivahGo-Mobile) | AI SaaS Platform <br /> *(Solo Founder)* | ![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white) ![React](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black) ![AI](https://img.shields.io/badge/AI-SaaS-FF6C37?style=flat-square) | Full-stack architecture, backend, frontend UI/UX, and third-party integrations for an AI-driven wedding workspace platform. |
 | [**SmogLife**](./Gamified%20Learning/SmogLife%20GameMaker) | Game Development <br /> *(NYU Abu Dhabi)* | ![GML](https://img.shields.io/badge/GML-000000?style=flat-square&logo=gamemaker&logoColor=white) | 2D educational game raising environmental awareness with interactive gameplay mechanics and puzzle design. |
 | [**Interactive Creative Computing**](./Interactive%20Media) | Creative Computing <br /> *(NYU Abu Dhabi)* | ![p5.js](https://img.shields.io/badge/p5.js-ED225D?style=flat-square&logo=p5dotjs&logoColor=white) ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black) | Generative art sketches and responsive interactive self-portrait built with the p5 canvas library. |
 | [**Core Data Structures & Systems**](./Data_Structures) | Systems & DS <br /> *(NYU Tandon)* | ![C++](https://img.shields.io/badge/C++-00599C?style=flat-square&logo=cplusplus&logoColor=white) ![C](https://img.shields.io/badge/C-A8B9CC?style=flat-square&logo=c&logoColor=white) | Custom implementations of Binary Search Trees (BST), Max Heaps, and Hash Tables with collision resolution. |
 | [**NYUAD QC Hackathon Showcase**](./NYUAD_QC_Hackathon) | Quantum Computing <br /> *(NYU Abu Dhabi)* | ![NYUAD](https://img.shields.io/badge/NYUAD-Quantum-57068c?style=flat-square) | Quantum Computing Hackathon project exploration and nomination showcase at NYU Abu Dhabi. |
+
+> 💼 **Other public projects** (outside this repo): [DeedFlow — AI Real Estate SaaS](https://github.com/Nikhil-Mundhra/DeedFlow) • [bid-nyuad — NYUAD Falcon Bidding Platform](https://github.com/Nikhil-Mundhra/bid-nyuad) • [run-ai-on-kaggle-free — Free GPU ML Backend](https://github.com/Nikhil-Mundhra/run-ai-on-kaggle-free) • [train-cnn-models — CNN Fine-Tuning Toolkit](https://github.com/Nikhil-Mundhra/train-cnn-models)
 
 ---
 
