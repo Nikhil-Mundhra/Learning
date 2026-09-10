@@ -1,8 +1,12 @@
 <div align="center">
 
-<a href="https://nyuad.nyu.edu/"><img src="./assets/nyuad_logo.svg" alt="NYU Abu Dhabi" height="60" valign="middle" /></a>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="https://engineering.nyu.edu/"><img src="./assets/nyu_tandon_logo.png" alt="NYU Tandon School of Engineering" height="60" valign="middle" /></a>
+<a href="https://nyuad.nyu.edu/"><img src="./assets/nyuad_logo.svg" alt="NYU Abu Dhabi" height="52" valign="middle" /></a>
+&nbsp;&nbsp;&nbsp;&nbsp;
+<a href="https://www.nyu.edu/paris.html"><img src="./assets/nyu_paris_logo.png" alt="NYU Paris" height="52" valign="middle" /></a>
+&nbsp;&nbsp;&nbsp;&nbsp;
+<a href="https://engineering.nyu.edu/"><img src="./assets/nyu_tandon_logo.png" alt="NYU Tandon School of Engineering" height="52" valign="middle" /></a>
+&nbsp;&nbsp;&nbsp;&nbsp;
+<a href="https://cas.nyu.edu/"><img src="./assets/nyu_cas_logo.png" alt="NYU College of Arts & Science" height="52" valign="middle" /></a>
 
 # Nikhil Mundhra
 ### BSc in Computer Science with Economics & Applied Math — NYU Abu Dhabi
@@ -148,7 +152,9 @@ Creative programming projects exploring canvas manipulation and algorithmic grap
 .
 ├── assets/                          # Authentic institution logos & project media
 │   ├── nyuad_logo.svg               # Official NYU Abu Dhabi logo
+│   ├── nyu_paris_logo.png           # Official NYU Paris lockup logo
 │   ├── nyu_tandon_logo.png          # Official NYU Tandon School of Engineering logo
+│   ├── nyu_cas_logo.png             # Official NYU College of Arts & Science logo
 │   └── smoglife-sprites.webp        # SmogLife character animation sheet
 ├── Applied Internet Technology/     # Full-stack web engineering (NYU CAS • CSCI-UA.0467)
 │   ├── final-project-Nikhil-Mundhra # "Cool Reminders" flagship full-stack MERN web app
