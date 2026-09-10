@@ -15,17 +15,26 @@
   <tr>
     <td align="center">
       <a href="https://www.nyu.edu/paris.html">
-        <img src="./assets/nyu_paris_logo.png" alt="NYU Paris" height="40" />
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="./assets/nyu_paris_logo_dark.png">
+          <img src="./assets/nyu_paris_logo.png" alt="NYU Paris" height="40" />
+        </picture>
       </a>
     </td>
     <td align="center">
       <a href="https://engineering.nyu.edu/">
-        <img src="./assets/nyu_tandon_logo.png" alt="NYU Tandon School of Engineering" height="40" />
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="./assets/nyu_tandon_logo_dark.png">
+          <img src="./assets/nyu_tandon_logo.png" alt="NYU Tandon School of Engineering" height="40" />
+        </picture>
       </a>
     </td>
     <td align="center">
       <a href="https://cas.nyu.edu/">
-        <img src="./assets/nyu_cas_logo.png" alt="NYU College of Arts & Science" height="40" />
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="./assets/nyu_cas_logo_dark.png">
+          <img src="./assets/nyu_cas_logo.png" alt="NYU College of Arts & Science" height="40" />
+        </picture>
       </a>
     </td>
   </tr>
