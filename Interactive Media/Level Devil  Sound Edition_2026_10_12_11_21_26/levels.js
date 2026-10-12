@@ -5,6 +5,12 @@
 const W = 960, H = 600, FLOOR = 470;
 const NAMES = ['DOWN', 'LEFT', 'RIGHT', 'UP'];
 const BINS = 14, SAMPLE_MS = 35;
+const FIELD = { x: 42, y: 144, w: 876, h: 331 };
+const RUN_SPEED = 236.5;
+const DOOR_SPEED = 225.5;
+const GRAVITY = 950;
+const MAX_FALL = 620;
+const JUMP_V = -390;
 
 const C = {
   paper: '#f7f0df',
@@ -16,7 +22,15 @@ const C = {
   danger: '#dc5d4e',
   green: '#64a985',
   sky: '#e8ddc9',
-  white: '#fffbef'
+  white: '#fffbef',
+  field: '#efe5d3',
+  skyTop: '#f4ead5',
+  skyLow: '#e3d2ae',
+  halo: '#f8dca6',
+  ridgeFar: '#d5c4a4',
+  ridgeMid: '#b7a383',
+  ridgeNear: '#8d7a5e',
+  ember: '#ffd98f'
 };
 
 function buildLevel(i) {
@@ -24,17 +38,11 @@ function buildLevel(i) {
   const ledge = (x, y, w, kind = 'solid') => ({
     x, y, w, h: 14, kind
   });
-  const trap = (type, x, y, w = 30, h = 30, trigger = x - 95) => ({
-    type, x, y, w, h, trigger
+  const trap = (type, x, y, w = 30, h = 30, trigger = x - 95, phase = 0) => ({
+    type, x, y, w, h, trigger, phase
   });
 
   const levels = [
-    {
-      title: 'THE WELCOME MAT',
-      hint: 'A calm introduction. Probably.',
-      platforms: [ground(40, 880)],
-      traps: []
-    },
     {
       title: 'A WARM GREETING',
       hint: 'The floor has a surprise near the door.',
@@ -149,6 +157,19 @@ function buildLevel(i) {
         trap('fake', 590, FLOOR - 46, 29, 46, 0),
         trap('fall', 735, 170, 45, 45, 630),
         trap('pop', 808, FLOOR, 35, 31, 755)
+      ]
+    },
+    {
+      title: 'THE DOOR COMES TO YOU',
+      hint: 'You cannot move. The door is yours to steer — and to hop.',
+      doorMode: true,
+      platforms: [ground(40, 880)],
+      traps: [
+        trap('laser', 762, 196, 9, 274, 0, 0),
+        trap('laser', 618, 424, 9, 46, 0, 0.5),
+        trap('laser', 474, 250, 9, 220, 0, 1.02),
+        trap('laser', 330, 424, 9, 46, 0, 1.54),
+        trap('laser', 186, 300, 9, 170, 0, 2.03)
       ]
     }
   ];

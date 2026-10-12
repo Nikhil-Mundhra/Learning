@@ -8,13 +8,78 @@ let state = 'play', stateTimer = 0, gameTime = 0, lastFrame = 0;
 let message = 'Reach the green door. Trust nothing.';
 let messageUntil = 0, particles = [], shake = 0;
 let lastJump = false, jumpQueuedUntil = 0;
-let walkCycle = 0, walkDust = 0, jumpSquash = 0, landSquash = 0;
+let walkCycle = 0, stepTimer = 0.5, landImpulse = 0, impactSpeed = 0;
+let doorImpact = 0;
+let bgBands = [], bgMotes = [], bgHorns = [], bgEmbers = [];
 
 function setup() {
   const s = min(1, windowWidth / W, windowHeight / H);
   createCanvas(floor(W * s), floor(H * s));
   textFont('monospace');
+  buildBackdrop();
   resetLevel();
+}
+
+function buildBackdrop() {
+  randomSeed(1337);
+  bgBands = [];
+  bgMotes = [];
+  bgHorns = [];
+  bgEmbers = [];
+
+  const bands = [
+    { depth: 0.08, base: 396, amp: 62, step: 104, col: C.ridgeFar },
+    { depth: 0.17, base: 428, amp: 44, step: 78, col: C.ridgeMid },
+    { depth: 0.29, base: 456, amp: 28, step: 62, col: C.ridgeNear }
+  ];
+
+  for (const b of bands) {
+    const pts = [];
+    let x = FIELD.x - 60;
+    while (x < FIELD.x + FIELD.w + 60) {
+      pts.push({
+        x,
+        y: b.base - random(b.amp) - (random() < 0.24 ? b.amp * 0.85 : 0)
+      });
+      x += b.step * random(0.72, 1.34);
+    }
+    bgBands.push({ ...b, pts });
+  }
+
+  for (let i = 0; i < 74; i++) {
+    bgMotes.push({
+      x: random(FIELD.x, FIELD.x + FIELD.w),
+      y: random(FIELD.y + 30, FIELD.y + FIELD.h),
+      s: random(1, 3.2),
+      depth: random(0.1, 0.62),
+      ph: random(TWO_PI),
+      sp: random(0.18, 0.75)
+    });
+  }
+
+  for (let i = 0; i < 8; i++) {
+    bgEmbers.push({
+      x: random(FIELD.x + 40, FIELD.x + FIELD.w - 40),
+      y: random(FIELD.y + 60, FIELD.y + FIELD.h - 40),
+      s: random(2.2, 4.4),
+      depth: random(0.2, 0.5),
+      ph: random(TWO_PI),
+      sp: random(0.12, 0.34)
+    });
+  }
+
+  for (let i = 0; i < 13; i++) {
+    const depth = 0.16 + random(0, 0.3);
+    bgHorns.push({
+      x: FIELD.x + 34 + i * 66 + random(-18, 18),
+      y: 424 + depth * 90 + random(-5, 5),
+      h: 26 + depth * 80,
+      w: random(17, 31),
+      curve: random(0.35, 0.8) * (i % 2 ? 1 : -1),
+      depth,
+      col: depth < 0.26 ? C.ridgeFar : depth < 0.36 ? C.ridgeMid : C.ridgeNear
+    });
+  }
 }
 
 function windowResized() {
@@ -42,6 +107,14 @@ function resetLevel() {
   audioX.until = 0;
   jumpQueuedUntil = 0;
   lastJump = false;
+  walkCycle = 0;
+  stepTimer = 0.5;
+  landImpulse = 0;
+  doorImpact = 0;
+  level.door.vy = 0;
+  level.door.grounded = true;
+  level.door.coyote = 0;
+  level.door.moving = 0;
   message = level.hint;
   messageUntil = millis() + 3300;
 }
@@ -70,6 +143,10 @@ function draw() {
   pop();
 }
 
+function controlled() {
+  return level.doorMode ? level.door : player;
+}
+
 function updateGame(dt, now) {
   gameTime += dt;
   const p = player;
@@ -91,11 +168,12 @@ function updateGame(dt, now) {
     }
   }
 
+  const body = controlled();
   const reversed = level.traps.some(t =>
     t.type === 'reverse' &&
     t.active &&
-    p.x + p.w > t.x &&
-    p.x < t.x + t.w
+    body.x + body.w > t.x &&
+    body.x < t.x + t.w
   );
 
   // ------------------------------------------
@@ -122,34 +200,70 @@ function updateGame(dt, now) {
 
   if (reversed) move *= -1;
 
-  p.vx = move * 215;
-  if (move !== 0) p.face = move > 0 ? 1 : -1;
-
   // Jump Input: Arrow Up, W, or Space buffers a jump
   if (upPressed && !lastJump) {
     jumpQueuedUntil = now + 155;
   }
   lastJump = upPressed;
 
+  if (level.doorMode) {
+    const d = level.door;
+    d.x = constrain(d.x + move * DOOR_SPEED * dt, FIELD.x + 4, W - FIELD.x - 4 - d.w);
+    if (move !== 0) d.moving = 1;
+    else d.moving = max(0, d.moving - dt * 4);
+
+    if (jumpQueuedUntil > now && (d.grounded || d.coyote > 0)) {
+      d.vy = JUMP_V;
+      d.grounded = false;
+      d.coyote = 0;
+      jumpQueuedUntil = 0;
+      dustPuff(d.x + d.w / 2, d.y + d.h, 5, 46, 4, C.amber);
+    }
+
+    const wasDown = d.grounded;
+    impactSpeed = 0;
+    d.vy = min(d.vy + GRAVITY * dt, MAX_FALL);
+    d.y += d.vy * dt;
+    d.grounded = false;
+
+    for (const q of level.platforms) {
+      if (!isSolid(q) || d.x + d.w <= q.x || d.x >= q.x + q.w) continue;
+      if (d.vy >= 0 && d.y + d.h >= q.y && d.y + d.h <= q.y + 12) {
+        impactSpeed = d.vy;
+        d.y = q.y - d.h;
+        d.vy = 0;
+        d.grounded = true;
+        break;
+      }
+    }
+
+    if (d.grounded) {
+      d.coyote = 0.09;
+      if (!wasDown) {
+        doorImpact = min(1, 0.3 + impactSpeed / MAX_FALL);
+        dustPuff(d.x + d.w / 2, d.y + d.h, 7, 62, 5, C.muted);
+      }
+    } else {
+      d.coyote = wasDown ? 0.09 : max(0, d.coyote - dt);
+    }
+    doorImpact = max(0, doorImpact - dt * 4.6);
+
+    updateTraps();
+
+    if (state === 'play' && overlap(p, d)) win();
+    return;
+  }
+
+  p.vx = move * RUN_SPEED;
+  if (move !== 0) p.face = move > 0 ? 1 : -1;
+
   // Jump execution with coyote time
   if (jumpQueuedUntil > now && (p.grounded || p.coyote > 0)) {
-    p.vy = -390;
+    p.vy = JUMP_V;
     p.grounded = false;
     p.coyote = 0;
     jumpQueuedUntil = 0;
-    jumpSquash = 0.45;
-    burst(p.x + p.w / 2, p.y + p.h, C.amber, 8);
-    for (let i = 0; i < 8; i++) {
-      particles.push({
-        x: p.x + p.w / 2 + random(-8, 8),
-        y: p.y + p.h,
-        vx: random(-80, 80),
-        vy: random(-120, -40),
-        life: random(0.3, 0.55),
-        color: C.amber,
-        s: random(3, 6)
-      });
-    }
+    dustPuff(p.x + p.w / 2, p.y + p.h, 5, 46, 4, C.amber);
   }
 
   // Horizontal movement & collision
@@ -169,14 +283,16 @@ function updateGame(dt, now) {
 
   // Vertical movement & gravity
   const wasGrounded = p.grounded;
+  impactSpeed = 0;
   p.grounded = false;
-  p.vy = min(p.vy + 950 * dt, 620);
+  p.vy = min(p.vy + GRAVITY * dt, MAX_FALL);
   p.y += p.vy * dt;
 
   for (const q of level.platforms) {
     if (!isSolid(q) || p.x + p.w <= q.x || p.x >= q.x + q.w) continue;
 
     if (p.vy >= 0 && oldY + p.h <= q.y + 9 && p.y + p.h >= q.y) {
+      impactSpeed = p.vy;
       p.y = q.y - p.h;
       p.vy = 0;
       p.grounded = true;
@@ -195,47 +311,35 @@ function updateGame(dt, now) {
   if (p.grounded) {
     p.coyote = 0.09;
     if (!wasGrounded) {
-      landSquash = 0.35;
-      burst(p.x + p.w / 2, p.y + p.h, C.amber, 12);
-      for (let i = 0; i < 6; i++) {
-        particles.push({
-          x: p.x + random(p.w * 0.2, p.w * 0.8),
-          y: p.y + p.h,
-          vx: random(-60, 60) * (p.face > 0 ? -1 : 1),
-          vy: random(-80, -20),
-          life: random(0.3, 0.6),
-          color: C.muted,
-          s: random(3, 7)
-        });
-      }
+      landImpulse = min(1, 0.3 + impactSpeed / MAX_FALL);
+      dustPuff(p.x + p.w / 2, p.y + p.h, 7, 62, 5, C.muted);
     }
   } else {
     p.coyote = wasGrounded ? 0.09 : max(0, p.coyote - dt);
   }
 
-  // Walking animation & dust
-  if (p.grounded && abs(p.vx) > 10) {
-    walkCycle += dt * 14 * (abs(p.vx) / 215);
-    walkDust -= dt;
-    if (walkDust <= 0) {
-      walkDust = 0.08;
-      particles.push({
-        x: p.x + (p.face > 0 ? p.w * 0.8 : p.w * 0.2),
-        y: p.y + p.h - 2,
-        vx: random(-30, 30) - p.vx * 0.3,
-        vy: random(-40, -10),
-        life: random(0.15, 0.3),
-        color: C.muted,
-        s: random(2, 5)
-      });
+  const speed = abs(p.vx);
+  const running = p.grounded && speed > 12;
+
+  if (running) {
+    walkCycle += dt * (5.2 + speed * 0.026);
+    stepTimer -= dt * (speed / RUN_SPEED);
+    if (stepTimer <= 0) {
+      stepTimer = 0.5;
+      dustPuff(
+        p.x + (p.face > 0 ? p.w : 0),
+        p.y + p.h,
+        2,
+        26,
+        3,
+        C.muted
+      );
     }
   } else {
-    walkCycle = lerp(walkCycle, 0, dt * 8);
+    stepTimer = 0.5;
   }
 
-  // Jump squash animation
-  if (jumpSquash > 0) jumpSquash = max(0, jumpSquash - dt * 4);
-  if (landSquash > 0) landSquash = max(0, landSquash - dt * 6);
+  landImpulse = max(0, landImpulse - dt * 4.6);
 
   // Platform expiration
   for (const q of level.platforms) {
@@ -259,10 +363,12 @@ function isSolid(q) {
 }
 
 function updateTraps() {
+  const victim = controlled();
+
   for (const t of level.traps) {
-    if (!t.active && player.x + player.w >= t.trigger) {
+    if (!t.active && victim.x + victim.w >= t.trigger) {
       t.active = true;
-      t.timer = gameTime;
+      t.timer = gameTime - (t.phase || 0);
 
       if (t.type === 'reverse') {
         showMessage('THE ARROWS HAVE CHANGED THEIR MINDS', 1400);
@@ -283,7 +389,7 @@ function updateTraps() {
       t.value = min(1, max(0, age - 0.24) * 6);
       if (
         t.value > 0.55 &&
-        overlap(player, {
+        overlap(victim, {
           x: t.x + 3,
           y: t.y - t.h * t.value,
           w: t.w - 6,
@@ -299,23 +405,24 @@ function updateTraps() {
         ? 0
         : min(FLOOR - t.h - t.y, (age - 0.47) * 360);
 
-      if (overlap(player, { ...t, y: t.y + t.value })) {
+      if (overlap(victim, { ...t, y: t.y + t.value })) {
         die();
       }
     }
 
     if (t.type === 'saw') {
-      t.value = sin(gameTime * 2.2) * 92;
-      if (circleRect(t.x + t.value + t.w / 2, t.y + t.h / 2, t.w * 0.43, player)) {
+      const ph = t.phase || 0;
+      t.value = sin((gameTime - ph) * 2.2) * 92;
+      if (circleRect(t.x + t.value + t.w / 2, t.y + t.h / 2, t.w * 0.43, victim)) {
         die();
       }
     }
 
-    if (t.type === 'laser' && t.active && age > 0.68 && age % 2.05 < 1.08 && overlap(player, t)) {
+    if (t.type === 'laser' && t.active && age > 0.68 && age % 2.05 < 1.08 && overlap(victim, t)) {
       die();
     }
 
-    if (t.type === 'spring' && player.vy >= 0 && overlap(player, { x: t.x, y: t.y - 7, w: t.w, h: 16 })) {
+    if (t.type === 'spring' && !level.doorMode && player.vy >= 0 && overlap(player, { x: t.x, y: t.y - 7, w: t.w, h: 16 })) {
       player.y = t.y - player.h;
       player.vy = -550;
       player.grounded = false;
@@ -345,11 +452,12 @@ function overlap(a, b) {
 
 function die() {
   if (state !== 'play') return;
+  const b = controlled();
   state = 'dead';
   stateTimer = 0.7;
   deaths++;
   shake = 8;
-  burst(player.x + 12, player.y + 15, C.danger, 16);
+  burst(b.x + b.w / 2, b.y + b.h / 2, C.danger, 16);
 }
 
 function win() {
@@ -368,6 +476,21 @@ function burst(x, y, color, count) {
       life: random(0.25, 0.65),
       color,
       s: random(2, 6)
+    });
+  }
+}
+
+function dustPuff(x, y, count, spread, size, color) {
+  for (let i = 0; i < count; i++) {
+    const side = i % 2 ? 1 : -1;
+    particles.push({
+      x: x + side * random(size * 0.5, size * 2),
+      y: y - random(0, 4),
+      vx: side * spread * random(0.55, 1),
+      vy: -random(10, 55),
+      life: random(0.22, 0.42),
+      color,
+      s: random(size * 0.55, size)
     });
   }
 }
@@ -399,7 +522,7 @@ function drawScene() {
   textSize(22);
   textStyle(BOLD);
   textAlign(LEFT, CENTER);
-  text('LEVEL DEVIL  /  SOUND EDITION', 40, 29);
+  text('LARP DEVIL', 40, 29);
 
   fill(C.white);
   textStyle(NORMAL);
@@ -420,11 +543,6 @@ function drawScene() {
   );
   drawWorld();
   pop();
-
-  // Speed lines when moving fast
-  if (state === 'play' && abs(player.vx) > 180) {
-    drawSpeedLines();
-  }
 
   drawControls();
 
@@ -451,46 +569,154 @@ function drawScene() {
   }
 }
 
-function drawSpeedLines() {
-  const p = player;
-  const lines = 5;
-  const intensity = min(1, (abs(p.vx) - 180) / 80);
-  stroke(255, 180, 60, 60 * intensity);
-  strokeWeight(1.5);
-  for (let i = 0; i < lines; i++) {
-    const x = p.face > 0 ? p.x - 10 - i * 12 : p.x + p.w + 10 + i * 12;
-    const y = p.y + random(4, p.h - 4);
-    const len = random(15, 30) * intensity;
-    line(x, y, x - p.face * len, y + random(-3, 3));
+function roundPath(x, y, w, h, r) {
+  const c = drawingContext;
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+function drawBackdrop() {
+  const ctx = drawingContext;
+  const fx = FIELD.x, fy = FIELD.y, fw = FIELD.w, fh = FIELD.h;
+  const drift = -(player.x - 76);
+
+  ctx.save();
+  roundPath(fx, fy, fw, fh, 11);
+  ctx.clip();
+
+  const sky = ctx.createLinearGradient(0, fy, 0, fy + fh);
+  sky.addColorStop(0, C.skyTop);
+  sky.addColorStop(0.58, C.skyLow);
+  sky.addColorStop(1, C.halo);
+  ctx.fillStyle = sky;
+  ctx.fillRect(fx, fy, fw, fh);
+
+  const sunX = fx + fw * 0.74;
+  const sunY = fy + fh * 0.3;
+  const sun = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 168);
+  sun.addColorStop(0, 'rgba(255, 233, 184, 0.85)');
+  sun.addColorStop(0.45, 'rgba(250, 214, 158, 0.30)');
+  sun.addColorStop(1, 'rgba(250, 214, 158, 0)');
+  ctx.fillStyle = sun;
+  ctx.fillRect(fx, fy, fw, fh);
+
+  const VEIL = [0.36, 0.19, 0.07];
+  for (let i = 0; i < bgBands.length; i++) {
+    const b = bgBands[i];
+    const px = drift * b.depth;
+
+    ctx.beginPath();
+    ctx.moveTo(b.pts[0].x + px, fy + fh);
+    for (const pt of b.pts) ctx.lineTo(pt.x + px, pt.y);
+    ctx.lineTo(b.pts[b.pts.length - 1].x + px, fy + fh);
+    ctx.closePath();
+    ctx.fillStyle = b.col;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(b.pts[0].x + px, b.pts[0].y);
+    for (const pt of b.pts) ctx.lineTo(pt.x + px, pt.y);
+    ctx.strokeStyle = 'rgba(255, 242, 214, 0.42)';
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    ctx.fillStyle = `rgba(244, 234, 213, ${VEIL[i]})`;
+    ctx.fillRect(fx, fy, fw, fh);
   }
+
+  for (const h of bgHorns) {
+    const px = drift * h.depth;
+    ctx.beginPath();
+    ctx.moveTo(h.x + px - h.w / 2, h.y);
+    ctx.quadraticCurveTo(
+      h.x + px + h.curve * h.w * 1.5,
+      h.y - h.h * 0.72,
+      h.x + px + h.curve * h.w * 0.55,
+      h.y - h.h
+    );
+    ctx.quadraticCurveTo(
+      h.x + px + h.w * 0.15,
+      h.y - h.h * 0.5,
+      h.x + px + h.w / 2,
+      h.y
+    );
+    ctx.closePath();
+    ctx.fillStyle = h.col;
+    ctx.fill();
+  }
+
+  const fog = ctx.createLinearGradient(0, fy + fh - 112, 0, fy + fh);
+  fog.addColorStop(0, 'rgba(248, 222, 170, 0)');
+  fog.addColorStop(1, 'rgba(248, 222, 170, 0.38)');
+  ctx.fillStyle = fog;
+  ctx.fillRect(fx, fy + fh - 112, fw, 112);
+
+  const t = gameTime;
+  for (const e of bgEmbers) {
+    const px = drift * e.depth;
+    const rise = (t * e.sp * 11) % (fh + 60);
+    const y = fy + fh - rise + 30;
+    const x = e.x + px + sin(t * 0.45 + e.ph) * 11;
+    const fade = constrain(rise / 90, 0, 1) * constrain((fh + 60 - rise) / 90, 0, 1);
+    fill(255, 206, 130, 34 * fade);
+    circle(x, y, e.s * 4.2);
+    fill(255, 232, 186, 170 * fade);
+    circle(x, y, e.s);
+  }
+
+  for (const m of bgMotes) {
+    const px = drift * m.depth;
+    const rise = (t * m.sp * 13) % (fh + 40);
+    const y = fy + fh - rise + 20;
+    const x = m.x + px + sin(t * 0.7 + m.ph) * 7;
+    const fade = constrain(rise / 70, 0, 1) * constrain((fh + 40 - rise) / 70, 0, 1);
+    fill(255, 224, 170, min(200, 165 * fade * m.depth * 1.6));
+    circle(x, y, m.s);
+  }
+
+  const vig = ctx.createRadialGradient(
+    fx + fw / 2, fy + fh * 0.52, fh * 0.28,
+    fx + fw / 2, fy + fh * 0.52, fh * 1.02
+  );
+  vig.addColorStop(0, 'rgba(37, 39, 44, 0)');
+  vig.addColorStop(1, 'rgba(37, 39, 44, 0.30)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(fx, fy, fw, fh);
+
+  ctx.restore();
+
+  noFill();
+  stroke(58, 52, 42, 90);
+  strokeWeight(2);
+  roundPath(fx, fy, fw, fh, 11);
+  drawingContext.stroke();
   noStroke();
 }
 
 function drawWorld() {
-  noStroke();
-  fill('#efe5d3');
-  rect(42, 144, 876, 331, 11);
+  drawBackdrop();
 
-  stroke(C.line);
-  strokeWeight(2);
-  noFill();
-  rect(42, 144, 876, 331, 11);
-  noStroke();
+  const hint = millis() < messageUntil
+    ? message
+    : level.doorMode
+      ? 'CONTROLS: The DOOR is yours. ←/→ or A/D to steer, ↑/W/SPACE to hop'
+      : 'CONTROLS: Use sounds OR Arrow Keys / WASD (↑ to jump, ↓ to stop)';
 
-  fill(C.muted);
   textSize(12);
-  textAlign(LEFT, CENTER);
-  text(
-    millis() < messageUntil
-      ? message
-      : 'CONTROLS: Use sounds OR Arrow Keys / WASD (↑ to jump, ↓ to stop)',
-    61, 164
-  );
+  noStroke();
+  fill(37, 39, 44, 46);
+  roundPath(FIELD.x + 12, FIELD.y + 8, textWidth(hint) + 30, 24, 12);
+  drawingContext.fill();
 
-  fill(C.line);
-  for (let i = 0; i < 7; i++) {
-    rect(94 + i * 122, 191, 2, 2);
-  }
+  fill(C.ink);
+  textAlign(LEFT, CENTER);
+  text(hint, FIELD.x + 27, FIELD.y + 21);
 
   for (const q of level.platforms) {
     if (!isSolid(q)) {
@@ -532,12 +758,57 @@ function drawWorld() {
   }
 
   const d = level.door;
+
+  let dsx = 1, dsy = 1;
+  if (level.doorMode && !d.grounded) {
+    const a = constrain(abs(d.vy) / MAX_FALL, 0, 1);
+    if (d.vy < 0) {
+      dsy = 1 + 0.13 * a;
+      dsx = 1 - 0.09 * a;
+    } else {
+      dsy = 1 + 0.05 * a;
+      dsx = 1 - 0.035 * a;
+    }
+  }
+  dsy -= doorImpact * 0.2;
+  dsx += doorImpact * 0.15;
+
+  if (level.doorMode) {
+    const pulse = 0.5 + 0.5 * sin(gameTime * 3.2);
+    noFill();
+    stroke(189, 101, 47, 110 + 120 * pulse);
+    strokeWeight(2);
+    rect(d.x - 6, d.y - 6, d.w + 12, d.h + 12, 6);
+    noStroke();
+
+    const ax = d.x + d.w / 2;
+    const dir = d.moving || 0;
+    fill(245, 171, 69, 210);
+    for (let i = 0; i < 2; i++) {
+      const off = (dir >= 0 ? 1 : -1) * (5 + i * 4);
+      triangle(
+        ax + off,
+        d.y - 12,
+        ax + off - (dir >= 0 ? 4 : -4),
+        d.y - 17,
+        ax + off + (dir >= 0 ? 4 : -4),
+        d.y - 17
+      );
+    }
+  }
+
+  push();
+  translate(d.x + d.w / 2, d.y + d.h);
+  scale(dsx, dsy);
+
   fill(C.green);
-  rect(d.x, d.y, d.w, d.h, 3);
+  rect(-d.w / 2, -d.h, d.w, d.h, 3);
   fill(C.ink);
-  rect(d.x + 5, d.y + 6, d.w - 10, d.h - 6, 2);
+  rect(-d.w / 2 + 5, -d.h + 6, d.w - 10, d.h - 6, 2);
   fill(C.amber);
-  circle(d.x + d.w - 8, d.y + 27, 4);
+  circle(d.w / 2 - 8, -d.h + 27, 4);
+
+  pop();
 
   for (const t of level.traps) drawTrap(t);
   drawPlayer();
@@ -650,67 +921,92 @@ function drawPlayer() {
   if (state === 'dead') return;
 
   const p = player;
-  const moving = abs(p.vx) > 10 && p.grounded;
-  const legPhase = sin(walkCycle);
-  const armPhase = sin(walkCycle + PI);
+  const speed = abs(p.vx);
+  const running = p.grounded && speed > 12;
 
-  // Squash & stretch factors
-  const squashY = 1 - jumpSquash * 0.45 + landSquash * 0.25;
-  const stretchX = 1 + jumpSquash * 0.25 - landSquash * 0.15;
-  const h = p.h * squashY;
-  const w = p.w * stretchX;
-  const cx = p.x + p.w / 2;
-  const cy = p.y + p.h - h / 2;
+  let sx = 1, sy = 1;
+  if (!p.grounded) {
+    const t = constrain(abs(p.vy) / 620, 0, 1);
+    if (p.vy < 0) {
+      sy = 1 + 0.13 * t;
+      sx = 1 - 0.09 * t;
+    } else {
+      sy = 1 + 0.05 * t;
+      sx = 1 - 0.035 * t;
+    }
+  }
+  const li = level.doorMode ? 0 : landImpulse;
+  sy -= li * 0.2;
+  sx += li * 0.15;
+
+  const phase = sin(walkCycle);
+  const swing = running ? phase * 3.4 : 0;
+  const bob = running ? -abs(cos(walkCycle)) * 1.6 : 0;
+  const lean = running ? constrain(p.vx / RUN_SPEED, -1, 1) * 0.035 : 0;
 
   push();
-  translate(cx, cy);
+  translate(p.x + p.w / 2, p.y + p.h);
   scale(p.face, 1);
+  rotate(lean);
+  scale(sx, sy);
 
-  // Shadow
   if (p.grounded) {
     noStroke();
-    fill(37, 39, 44, 60);
-    ellipse(0, h / 2 + 2, w * 0.7, 6 * squashY);
+    fill(37, 39, 44, 55);
+    ellipse(0, 1.5, p.w * (0.62 - landImpulse * 0.1), 5 - landImpulse * 1.4);
   }
 
-  // Legs (animated when walking)
-  const legY = h / 2 - 4;
-  const legSwing = moving ? legPhase * 10 : 0;
-  const legSpread = moving ? abs(legPhase) * 4 : 0;
-
-  // Back leg
+  // Legs
   fill(C.amberDark);
-  rect(-w / 2 + 3 + legSpread, legY + legSwing * 0.5, 6, h * 0.45 - legSwing * 0.5, 2);
-  // Front leg
-  rect(-w / 2 + 3 - legSpread, legY - legSwing * 0.5, 6, h * 0.45 + legSwing * 0.5, 2);
+  rect(-p.w / 2, -8, 6, 8, 1.5);
+  rect(1, -8, 6, 8, 1.5);
+  rect(-p.w / 2 + swing, -8, 6, 8 - max(0, swing) * 0.9, 1.5);
+  rect(1 - swing, -8, 6, 8 - max(0, -swing) * 0.9, 1.5);
+
+  // Trailing arm
+  if (running) {
+    rect(-p.w / 2 - 1 + phase * 2, -p.h + 15 + bob, 5, 11, 2);
+  }
 
   // Body
-  fill(C.amber);
-  rect(-w / 2 + 2, -h / 2, w - 4, h - 8, 4);
-
-  // Body highlight
-  fill(255, 200, 100, 40);
-  rect(-w / 2 + 4, -h / 2 + 3, w - 8, 6, 2);
-
-  // Eyes
-  fill(C.ink);
-  const eyeX = w / 2 - 8;
-  const blink = (state === 'won' || frameCount % 120 < 3) ? 1 : 0;
-  rect(eyeX, -h / 2 + 9, 3, blink ? 1 : 4);
-
-  // Arms (swing opposite to legs when walking)
-  const armSwing = moving ? armPhase * 8 : 0;
   fill(C.amberDark);
-  rect(-w / 2 - 4, -h / 2 + 8 + armSwing * 0.5, 5, h * 0.35, 2);
-  fill(C.amber);
-  rect(-w / 2 + w - 1, -h / 2 + 8 - armSwing * 0.5, 5, h * 0.35, 2);
+  rect(-p.w / 2, -p.h, p.w, p.h, 5);
 
-  // Feet accent
+  fill(C.amber);
+  rect(-p.w / 2 + 2, -p.h + 2 + bob, p.w - 4, p.h - 6, 4);
+
+  // Eye
   fill(C.ink);
-  rect(-w / 2 + 3 + legSpread, legY + h * 0.45 - 2 + legSwing * 0.5, 6, 2);
-  rect(-w / 2 + 3 - legSpread, legY + h * 0.45 - 2 - legSwing * 0.5, 6, 2);
+  const blink = frameCount % 150 < 4;
+  rect(4, -p.h + 11 + bob, 3, blink ? 1 : 4, 1);
 
   pop();
+
+  if (level.doorMode) {
+    stroke(118, 117, 111, 165);
+    strokeWeight(1.5);
+    const g = 5, a = 8;
+    const x0 = p.x - g, y0 = p.y - g, x1 = p.x + p.w + g, y1 = p.y + p.h + g;
+    line(x0, y0, x0 + a, y0);
+    line(x0, y0, x0, y0 + a);
+    line(x1, y0, x1 - a, y0);
+    line(x1, y0, x1, y0 + a);
+    line(x0, y1, x0 + a, y1);
+    line(x0, y1, x0, y1 - a);
+    line(x1, y1, x1 - a, y1);
+    line(x1, y1, x1, y1 - a);
+    noStroke();
+  }
+
+  noStroke();
+  fill(255, 255, 255, 90);
+  rect(
+    p.x + p.w / 2 - p.w * 0.32,
+    p.y + p.h - p.h * sy + 3 + bob * sy,
+    4,
+    2,
+    1
+  );
 }
 
 function drawControls() {
@@ -778,7 +1074,9 @@ function drawControls() {
   fill('#aaa69b');
   textAlign(RIGHT);
   text(
-    '←/→ or A/D MOVE  ·  ↑/W/SPACE JUMP  ·  ↓/S STOP  ·  R RESTART',
+    level.doorMode
+      ? '←/→ or A/D MOVE THE DOOR  ·  ↑/W/SPACE HOP  ·  R RESTART'
+      : '←/→ or A/D MOVE  ·  ↑/W/SPACE JUMP  ·  ↓/S STOP  ·  R RESTART',
     944, 586
   );
 
