@@ -2,11 +2,11 @@
 // CONSTANTS & LEVEL DEFINITIONS
 // ==========================================
 
-const W = 960, H = 600, FLOOR = 470;
+const W = 960, H = 600, FLOOR = H - 116;
 const WORLD_BASE = 876;
 const NAMES = ['DOWN', 'LEFT', 'RIGHT', 'UP'];
 const BINS = 14, SAMPLE_MS = 35;
-const FIELD = { x: 42, y: 144, w: 876, h: 331 };
+const FIELD = { x: 0, y: 76, w: 876, h: H - 174 };
 const RUN_SPEED = 236.5;
 const DOOR_SPEED = 225.5;
 const GRAVITY = 950;
@@ -59,23 +59,30 @@ const C = {
 };
 
 function buildLevel(i) {
-  const ground = (x, w) => ({ x, y: FLOOR, w, h: 28 });
+  const ground = (x, w) => ({ x, y: FLOOR, w, h: 28, kind: 'ground' });
   const ledge = (x, y, w, kind = 'solid') => ({
     x, y, w, h: 14, kind
   });
+  const ladder = (x, top, bottom) => ({ x, y: top, w: 30, h: bottom - top });
   const trap = (type, x, y, w = 30, h = 30, trigger = x - 95, phase = 0) => ({
     type, x, y, w, h, trigger, phase
   });
 
   const levels = [
     {
-      title: 'A WARM GREETING',
-      hint: 'The floor has a surprise near the door.',
-      platforms: [ground(40, 880)],
-      traps: [
-        trap('pop', 670, FLOOR, 42, 32, 585),
-        trap('pop', 735, FLOOR, 42, 32, 660)
-      ]
+      title: 'THE WAY BACK',
+      hint: 'Climb up, find the switch, then return to the door.',
+      worldW: 980,
+      doorX: 16,
+      platforms: [
+        ground(40, 280),
+        ledge(250, 350, 175),
+        ledge(485, 350, 175),
+        ledge(720, 350, 205)
+      ],
+      ladders: [ladder(230, 350, FLOOR)],
+      exitSwitch: { x: 868, y: 318, w: 28, h: 32 },
+      traps: []
     },
     {
       title: 'TRUST ISSUES',
@@ -120,13 +127,14 @@ function buildLevel(i) {
     },
     {
       title: 'MOVING TARGET',
-      hint: 'Ride the moving platform across.',
+      hint: 'Ride the moving platform. The far gate has other plans.',
+      gateReturnX: 76,
       platforms: [
         ground(40, 244),
         ledge(285, 422, 128, 'moving'),
         ground(690, 230)
       ],
-      traps: [trap('saw', 588, 423, 32, 32, 0)]
+      traps: [trap('saw', 588, 407, 64, 64, 0)]
     },
     {
       title: 'EXPRESS DELIVERY',
@@ -216,7 +224,9 @@ function buildLevel(i) {
   }
   const worldW = spec.worldW || WORLD_BASE;
 
-  const solids = spec.platforms.filter(p => p.y >= FLOOR && (!p.kind || p.kind === 'solid'));
+  const solids = spec.platforms.filter(p =>
+    p.y >= FLOOR && (!p.kind || p.kind === 'solid' || p.kind === 'ground')
+  );
   if (solids.length) {
     const left = solids.reduce((a, b) => (a.x < b.x ? a : b));
     left.x = 0;
@@ -226,6 +236,6 @@ function buildLevel(i) {
     ...spec,
     worldW,
     leftBound: 0,
-    door: { x: worldW - 4, y: FLOOR - 48, w: 28, h: 48 }
+    door: { x: spec.doorX ?? worldW - 4, y: FLOOR - 48, w: 28, h: 48 }
   };
 }

@@ -23,10 +23,8 @@ const LIVE_RELOAD = `
 <script>
 (() => {
   const es = new EventSource('/__reload');
-  es.onmessage = () => location.reload();
-  es.onerror = () => {
-    es.close();
-    setTimeout(() => location.reload(), 1500);
+  es.onmessage = event => {
+    if (event.data === 'reload') location.reload();
   };
 })();
 </script>

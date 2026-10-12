@@ -5,6 +5,7 @@
 let buttons = [];
 let levelIndex = 0, level, player, deaths = 0;
 let state = 'play', stateTimer = 0, gameTime = 0, lastFrame = 0;
+let tutorialReturnState = 'start';
 let message = 'Reach the green door. Trust nothing.';
 let messageUntil = 0, particles = [], shake = 0;
 let lastJump = false, jumpQueuedUntil = 0;
@@ -182,8 +183,11 @@ function resetLevel() {
   sprinting = false;
   player = {
     x: 76, y: FLOOR - 32, w: 24, h: 32,
-    vx: 0, vy: 0, grounded: true, coyote: 0, face: 1
+    vx: 0, vy: 0, grounded: true, coyote: 0, face: 1,
+    onLadder: false, ladder: null
   };
+  if (level.exitSwitch) level.exitSwitch.active = false;
+  level.door.locked = Boolean(level.exitSwitch);
   level.traps.forEach(t => {
     t.active = false;
     t.timer = 0;
@@ -211,6 +215,9 @@ function resetLevel() {
   level.door.grounded = true;
   level.door.coyote = 0;
   level.door.moving = 0;
+  if (level.gateReturnX !== undefined) {
+    level.gateEvent = { phase: 'waiting', timer: 0, closedY: level.door.y };
+  }
   message = level.hint;
   messageUntil = millis() + 3300;
 }
@@ -226,6 +233,12 @@ function draw() {
     titleT += dt;
     updateParticles(dt);
     drawTitle();
+    return;
+  }
+
+  if (state === 'tutorialControls' || state === 'tutorialAudio') {
+    updateParticles(dt);
+    drawTutorial();
     return;
   }
 
@@ -297,6 +310,8 @@ function updateGame(dt, now) {
   gameTime += dt;
   const p = player;
 
+  if (updateGateRelocation(dt)) return;
+
   // Moving platforms
   for (const q of level.platforms) {
     if (q.kind !== 'moving') continue;
@@ -336,6 +351,48 @@ const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
     audioX.until = 0;
   }
 
+  const ladder = p.ladder || (level.ladders || []).find(l =>
+    p.x + p.w > l.x - 3 &&
+    p.x < l.x + l.w + 3 &&
+    p.y + p.h >= l.y - 4 &&
+    p.y <= l.y + l.h - p.h + 4
+  );
+  const climb = (upPressed ? -1 : 0) + (downPressed ? 1 : 0);
+  if (ladder && (p.onLadder || climb !== 0) && !(leftPressed || rightPressed)) {
+    p.onLadder = true;
+    p.ladder = ladder;
+    p.x = ladder.x + (ladder.w - p.w) / 2;
+    p.vx = 0;
+    p.vy = 0;
+    p.grounded = false;
+
+    if (climb !== 0) {
+      p.y += climb * 150 * dt;
+      if (p.y <= ladder.y - p.h) {
+        p.y = ladder.y - p.h;
+        p.grounded = true;
+        p.onLadder = false;
+        p.ladder = null;
+      } else if (p.y >= ladder.y + ladder.h - p.h) {
+        p.y = ladder.y + ladder.h - p.h;
+        p.grounded = true;
+        p.onLadder = false;
+        p.ladder = null;
+      }
+    }
+
+    lastJump = upPressed;
+    updateCamera();
+    updateTraps();
+    updateExitSwitch();
+    if (state === 'play' && !level.door.locked && overlap(p, level.door)) win();
+    return;
+  }
+  if (p.onLadder) {
+    p.onLadder = false;
+    p.ladder = null;
+  }
+
   let move = 0;
   if (rightPressed || leftPressed) {
     // Arrow keys override voice momentum
@@ -348,7 +405,7 @@ const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
   if (reversed) move *= -1;
 
   // Jump Input: Arrow Up, W, or Space buffers a jump
-  if (upPressed && !lastJump) {
+  if (upPressed && !lastJump && !ladder) {
     jumpQueuedUntil = now + 155;
   }
   lastJump = upPressed;
@@ -424,7 +481,11 @@ const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
   // Horizontal movement & collision
   const oldX = p.x;
   const oldY = p.y;
-  p.x = constrain(p.x + p.vx * dt, level.leftBound, level.door.x - p.w + 10);
+  const rightBound = level.exitSwitch ||
+    (level.gateReturnX !== undefined && level.gateEvent.phase !== 'waiting')
+    ? level.worldW - p.w
+    : level.door.x - p.w + 10;
+  p.x = constrain(p.x + p.vx * dt, level.leftBound, rightBound);
 
   for (const q of level.platforms) {
     if (!isSolid(q) || q.y >= FLOOR || !overlap(p, q)) continue;
@@ -507,7 +568,71 @@ const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
   updateTraps();
 
   if (p.y > H + 20) die();
-  if (state === 'play' && overlap(p, level.door)) win();
+  updateExitSwitch();
+  if (state === 'play' && !level.door.locked && overlap(p, level.door)) win();
+}
+
+function updateGateRelocation(dt) {
+  if (level.gateReturnX === undefined) return false;
+
+  const event = level.gateEvent;
+  const door = level.door;
+  const player = controlled();
+
+  if (
+    event.phase === 'waiting' &&
+    player.grounded &&
+    player.x + player.w >= door.x - 150
+  ) {
+    event.phase = 'sinking';
+    event.timer = 0;
+    showMessage('THE GATE IS MOVING. TURN BACK.', 2400);
+  }
+
+  if (event.phase === 'waiting') return false;
+
+  const duration = 0.62;
+  event.timer = min(duration, event.timer + dt);
+  const progress = event.timer / duration;
+  const ease = progress * progress * (3 - 2 * progress);
+  const hiddenY = FLOOR + door.h + 8;
+
+  if (event.phase === 'sinking') {
+    door.y = event.closedY + (hiddenY - event.closedY) * ease;
+    if (progress >= 1) {
+      door.x = level.gateReturnX;
+      event.phase = 'rising';
+      event.timer = 0;
+    }
+  } else if (event.phase === 'rising') {
+    door.y = hiddenY + (event.closedY - hiddenY) * ease;
+    if (progress >= 1) {
+      door.y = event.closedY;
+      event.phase = 'returned';
+      showMessage('THE GATE IS BACK AT THE START. GO GET IT.', 3200);
+    }
+  } else {
+    return false;
+  }
+
+  player.vx = 0;
+  player.vy = 0;
+  player.grounded = true;
+  updateCamera();
+  updateTraps();
+  if (event.phase !== 'returned') return true;
+
+  lastJump = keyAny(UP_ARROW, 38, 'ArrowUp', 87, 'KeyW', 'w', 32, ' ', 'Space');
+  return false;
+}
+
+function updateExitSwitch() {
+  const exitSwitch = level.exitSwitch;
+  if (!exitSwitch || exitSwitch.active || !overlap(player, exitSwitch)) return;
+
+  exitSwitch.active = true;
+  level.door.locked = false;
+  showMessage('THE DOOR OPENED BEHIND YOU. HEAD BACK.', 2600);
 }
 
 function isSolid(q) {
@@ -787,7 +912,7 @@ function showMessage(s, duration) {
 }
 
 function drawScene() {
-  background(C.paper);
+  background(C.ink);
   noStroke();
 
   fill(C.ink);
@@ -808,6 +933,10 @@ function drawScene() {
   text(`DEATHS ${deaths}`, FIELD.w - 40, 32);
   textAlign(LEFT);
 
+  const fieldContext = drawingContext;
+  fieldContext.save();
+  roundPath(0, 76, FIELD.w, 426, 12);
+  fieldContext.clip();
   fill(C.sky);
   rect(0, 76, FIELD.w, 426);
 
@@ -818,6 +947,14 @@ function drawScene() {
   );
   drawWorld();
   pop();
+  fieldContext.restore();
+
+  fieldContext.save();
+  roundPath(0, 76, FIELD.w, 426, 12);
+  fieldContext.strokeStyle = 'rgba(37, 39, 44, 0.22)';
+  fieldContext.lineWidth = 1;
+  fieldContext.stroke();
+  fieldContext.restore();
 
   drawControls();
 
@@ -882,6 +1019,7 @@ function startGame() {
 function drawTitle() {
   const fx = FIELD.x, fw = FIELD.w;
 
+  background(C.ink);
   drawBackdrop();
 
   buttons = [];
@@ -962,22 +1100,203 @@ function drawTitle() {
     textStyle(NORMAL);
   }
 
-  uiButton(
-    18, 512, 109, 32,
-    micState === 'on' ? 'MIC ON' : 'ENABLE MIC',
-    micState === 'on' ? 'on' : 'accent',
-    () => enableMic()
-  );
-  uiButton(617, 512, 128, 32, 'BEGIN  ⏎', 'accent', () => startGame());
+  uiButton(FIELD.w / 2 - 72, 512, 144, 36, 'BEGIN  ⏎', 'accent', beginTutorial);
+
+  fill('#aaa69b');
+  textAlign(CENTER, CENTER);
+  text('← / → CHANGE SKIN     ENTER TO BEGIN', FIELD.w / 2, 565);
+}
+
+function beginTutorial() {
+  tutorialReturnState = 'start';
+  state = 'tutorialControls';
+}
+
+function drawTutorial() {
+  background(C.ink);
+  buttons = [];
+
+  const cardW = min(760, width - 32);
+  const cardH = min(530, height - 32);
+  const x = (width - cardW) / 2;
+  const y = (height - cardH) / 2;
+  const audioPage = state === 'tutorialAudio';
+
+  noStroke();
+  fill('#303338');
+  rect(x, y, cardW, cardH, 16);
+  fill(C.amber);
+  rect(x + 24, y + 24, 34, 4, 2);
 
   fill(C.white);
   textAlign(LEFT, CENTER);
+  textStyle(BOLD);
+  textSize(12);
+  text('LARP DEVIL', x + 24, y + 45);
+  textStyle(NORMAL);
+  fill('#aaa69b');
+  textAlign(RIGHT, CENTER);
   textSize(11);
-  text(audioStatus.slice(0, 86), 20, 565);
+  text(audioPage ? 'VOICE CONTROLS' : 'MOVEMENT CONTROLS', x + cardW - 24, y + 45);
+
+  fill(C.white);
+  textAlign(CENTER, CENTER);
+  textStyle(BOLD);
+  textSize(cardW < 440 ? 22 : 27);
+  text(audioPage ? 'TEACH IT YOUR SOUNDS' : 'LEARN THE BASICS', x + cardW / 2, y + 91);
+  textStyle(NORMAL);
+  fill('#c4c0b6');
+  textSize(13);
+  text(
+    audioPage
+      ? 'Optional: record a distinct sound for each direction.'
+      : 'A few controls are all you need to get moving.',
+    x + cardW / 2, y + 122
+  );
+
+  stroke('#484b4f');
+  line(x + 24, y + 148, x + cardW - 24, y + 148);
+  noStroke();
+
+  if (audioPage) {
+    drawAudioTutorial(x, y, cardW, cardH);
+    return;
+  }
+
+  const narrow = cardW < 560;
+  const contentX = x + 24;
+  const contentW = cardW - 48;
+  const rowGap = 12;
+  const rowH = 62;
+  const cols = narrow ? 1 : 2;
+  const rowW = cols === 1 ? contentW : (contentW - rowGap) / 2;
+  const controls = [
+    ['←  →', 'Move left and right'],
+    ['↑  W  SPACE', 'Jump. Hold ↑ / W to climb'],
+    ['SHIFT', 'Sprint while moving'],
+    ['↓  S', 'Stop voice-driven movement']
+  ];
+  const rowsY = y + 170;
+
+  controls.forEach(([keys, description], i) => {
+    const col = i % cols;
+    const row = floor(i / cols);
+    const rx = contentX + col * (rowW + rowGap);
+    const ry = rowsY + row * (rowH + rowGap);
+    fill('#3a3d41');
+    rect(rx, ry, rowW, rowH, 8);
+
+    fill(C.amber);
+    textAlign(CENTER, CENTER);
+    textStyle(BOLD);
+    textSize(keys.length > 8 ? 10 : 13);
+    text(keys, rx + 62, ry + rowH / 2);
+
+    fill(C.white);
+    textAlign(LEFT, CENTER);
+    textStyle(NORMAL);
+    textSize(12);
+    text(description, rx + 112, ry + rowH / 2);
+  });
 
   fill('#aaa69b');
-  textAlign(RIGHT);
-  text('←/→ CHANGE SKIN  ·  ENTER BEGIN  ·  SHIFT SPRINTS IN-GAME', FIELD.w - 20, 565);
+  textAlign(CENTER, CENTER);
+  textSize(11);
+  text('Voice controls are optional. Keyboard controls always work.', x + cardW / 2, y + cardH - 94);
+
+  uiButton(x + 24, y + cardH - 64, 130, 36, 'SKIP TUTORIAL', '', () => startGame());
+  uiButton(x + cardW - 154, y + cardH - 64, 130, 36, 'CONTINUE', 'accent', () => {
+    state = 'tutorialAudio';
+  });
+}
+
+function drawAudioTutorial(x, y, cardW, cardH) {
+  const compact = cardW < 500;
+  const center = x + cardW / 2;
+  const micY = y + 174;
+  const directionsY = y + (compact ? 272 : 238);
+  const statusY = y + (compact ? 324 : 287);
+  const listenY = y + (compact ? 354 : 321);
+  const durationY = y + (compact ? 405 : 371);
+  const footerY = y + cardH - 64;
+
+  uiButton(center - 72, micY, 144, 36,
+    micState === 'on' ? 'MICROPHONE READY' : 'ENABLE MICROPHONE',
+    micState === 'on' ? 'on' : 'accent',
+    () => enableMic()
+  );
+
+  fill('#c4c0b6');
+  textAlign(CENTER, CENTER);
+  textSize(11);
+  text('Record one short sound for each direction.', center, directionsY - 24);
+
+  const names = ['DOWN', 'LEFT', 'RIGHT', 'UP'];
+  const marks = ['↓', '←', '→', '↑'];
+  const buttonW = compact ? min(70, (cardW - 66) / 4) : 76;
+  const gap = compact ? 6 : 10;
+  const buttonsW = buttonW * 4 + gap * 3;
+  const startX = center - buttonsW / 2;
+
+  names.forEach((name, i) => {
+    const label = `${signatures[i] ? '✓ ' : ''}${marks[i]} ${name}`;
+    uiButton(startX + i * (buttonW + gap), directionsY, buttonW, 34, label,
+      training === i ? 'accent' : signatures[i] ? 'on' : '',
+      () => beginTraining(i)
+    );
+  });
+
+  fill(C.white);
+  textAlign(CENTER, CENTER);
+  textSize(11);
+  const statusLines = [''];
+  for (const word of audioStatus.split(/\s+/)) {
+    const current = statusLines[statusLines.length - 1];
+    const next = current ? `${current} ${word}` : word;
+    if (current && textWidth(next) > cardW - 56) statusLines.push(word);
+    else statusLines[statusLines.length - 1] = next;
+  }
+  const visibleStatus = statusLines.slice(0, 3);
+  if (statusLines.length > visibleStatus.length) {
+    let last = visibleStatus[visibleStatus.length - 1];
+    while (last && textWidth(`${last}…`) > cardW - 56) last = last.slice(0, -1);
+    visibleStatus[visibleStatus.length - 1] = `${last}…`;
+  }
+  visibleStatus.forEach((line, i) => {
+    text(line, center, statusY + (i - (visibleStatus.length - 1) / 2) * 14);
+  });
+
+  uiButton(center - 72, listenY, 144, 34,
+    listening ? 'STOP LISTENING' : 'START LISTENING',
+    listening ? 'accent' : '',
+    () => toggleListening()
+  );
+
+  fill('#c4c0b6');
+  textSize(10);
+  text('MOVEMENT LENGTH', center - 68, durationY + 1);
+  uiButton(center + 13, durationY - 16, 28, 30, '−', '', () => {
+    moveSeconds = max(0.25, moveSeconds - 0.1);
+  });
+  uiButton(center + 45, durationY - 16, 58, 30, `${moveSeconds.toFixed(2)}s`, 'flat', null);
+  uiButton(center + 107, durationY - 16, 28, 30, '+', '', () => {
+    moveSeconds = min(2, moveSeconds + 0.1);
+  });
+
+  if (tutorialReturnState === 'play') {
+    uiButton(center - 65, footerY, 130, 36, 'RETURN TO GAME', 'accent', resumeGame);
+  } else {
+    uiButton(x + 24, footerY, 108, 36, 'BACK', '', () => {
+      state = 'tutorialControls';
+    });
+    uiButton(x + cardW - 154, footerY, 130, 36, 'START GAME', 'accent', () => startGame());
+  }
+}
+
+function resumeGame() {
+  audioX.until = 0;
+  jumpQueuedUntil = 0;
+  state = 'play';
 }
 
 function buildEndingScene() {
@@ -1413,6 +1732,8 @@ function drawWorld() {
     ? message
     : level.doorMode
       ? 'CONTROLS: The DOOR is yours. ←/→ or A/D to steer, ↑/W/SPACE to hop'
+      : level.ladders && level.ladders.length
+        ? 'UP / W TO CLIMB. DOWN / S TO DESCEND. Find the switch, then return.'
       : 'CONTROLS: Use sounds OR Arrow Keys / WASD (↑ to jump, ↓ to stop)';
 
   textSize(12);
@@ -1436,10 +1757,20 @@ function drawWorld() {
       continue;
     }
 
-    fill(q.kind === 'crumble' && q.timer ? C.amber : C.ink);
-    rect(q.x, q.y, q.w, q.h, 2);
-    fill(q.kind === 'conveyor' ? C.amber : '#918577');
-    rect(q.x, q.y + 5, q.w, 3);
+    const isGround = q.kind === 'ground';
+    fill(q.kind === 'crumble' && q.timer ? C.amber : '#493a4c');
+    rect(q.x, q.y, q.w, q.h, isGround ? 0 : 2);
+    fill(q.kind === 'conveyor' ? C.amber : '#bd818d');
+    rect(q.x, q.y + 2, q.w, 3);
+
+    if (isGround) {
+      stroke('#68566b');
+      strokeWeight(1);
+      for (let x = q.x + 18; x < q.x + q.w; x += 36) {
+        line(x, q.y + 10, x + 7, q.y + 16);
+      }
+      noStroke();
+    }
 
     if (q.kind === 'crumble') {
       stroke(C.paper);
@@ -1462,6 +1793,29 @@ function drawWorld() {
       fill(C.amber);
       rect(q.x + 6, q.y + 5, q.w - 12, 3);
     }
+  }
+
+  for (const ladder of level.ladders || []) {
+    stroke('#69505a');
+    strokeWeight(5);
+    line(ladder.x + 4, ladder.y + 2, ladder.x + 4, ladder.y + ladder.h);
+    line(ladder.x + ladder.w - 4, ladder.y + 2, ladder.x + ladder.w - 4, ladder.y + ladder.h);
+    stroke('#d29a86');
+    strokeWeight(3);
+    for (let y = ladder.y + 8; y < ladder.y + ladder.h; y += 16) {
+      line(ladder.x + 4, y, ladder.x + ladder.w - 4, y);
+    }
+    noStroke();
+  }
+
+  if (level.exitSwitch) {
+    const s = level.exitSwitch;
+    fill(level.door.locked ? '#694954' : C.green);
+    rect(s.x, s.y, s.w, s.h, 5);
+    fill(level.door.locked ? C.amber : '#dcecd2');
+    circle(s.x + s.w / 2, s.y + 11, 8);
+    fill(level.door.locked ? '#e69780' : C.green);
+    rect(s.x + 8, s.y + 20, s.w - 16, 3, 1);
   }
 
   const d = level.door;
@@ -1510,7 +1864,7 @@ function drawWorld() {
   translate(d.x + d.w / 2, d.y + d.h);
   scale(dsx, dsy);
 
-  fill(C.green);
+  fill(d.locked ? '#81525a' : C.green);
   rect(-d.w / 2, -d.h, d.w, d.h, 3);
 
   fill(C.ink);
@@ -1518,7 +1872,7 @@ function drawWorld() {
 
   const iw = d.w - 10;
   const pw = (iw / 2) * (1 - open);
-  fill(C.green);
+  fill(d.locked ? '#81525a' : C.green);
   rect(-iw / 2, -d.h + 6, pw, d.h - 6, 1);
   rect(iw / 2 - pw, -d.h + 6, pw, d.h - 6, 1);
 
@@ -1579,8 +1933,10 @@ function drawTrap(t) {
       t.x + 23, t.y + t.value + t.h
     );
   } else if (t.type === 'saw') {
+    const size = t.w / 32;
     push();
     translate(t.x + t.value + t.w / 2, t.y + t.h / 2);
+    scale(size);
     rotate(gameTime * 5);
     fill(C.danger);
 
@@ -1749,52 +2105,32 @@ function drawControls() {
   const fw = FIELD.w;
   const R = 20;
   const row = (bx, bw, label, style, action) => uiButton(bx, 512, bw, 32, label, style, action);
+  const navX = fw - R - 85;
+  const meterW = max(145, min(250, fw * 0.25));
+  const meterX = max(R + 207, navX - meterW - 28);
 
-  const fullW = R + 109 + 10 + 4 * 83 + 10 + 128 + 10 + 75 + 10 + 150 + 12 + 85 + R;
-  const compact = fw < fullW;
-
-  row(R, 109, micState === 'on' ? 'MIC ON' : 'ENABLE MIC',
-    micState === 'on' ? 'on' : 'accent', () => enableMic());
-
-  let x = R + 119;
-
-  if (!compact) {
-    NAMES.forEach((name, i) => {
-      row(x, 75, (signatures[i] ? '✓ ' : '') + name,
-        training === i ? 'accent' : signatures[i] ? 'on' : '', () => beginTraining(i));
-      x += 83;
-    });
-    x += 9;
-  }
-
-  row(x, 128, listening ? 'STOP LISTEN' : 'START LISTEN',
-    listening ? 'accent' : '', () => toggleListening());
-  x += 138;
-
-  row(x, 75, 'RETRY', '', () => resetLevel());
-  x += 84;
-
-  const meterW = max(130, min(300, fw * 0.2));
-  const meterX = x;
-
-  row(meterX + meterW + 8, 28, '\u2212', '', () => moveSeconds = max(0.25, moveSeconds - 0.1));
-  row(meterX + meterW + 40, 65, `${moveSeconds.toFixed(2)}s`, 'flat', null);
-  row(meterX + meterW + 109, 28, '+', '', () => moveSeconds = min(2, moveSeconds + 0.1));
-
-  const navX = max(meterX + meterW + 147, fw - R - 85);
+  row(R, 112, 'VOICE SETUP', listening ? 'on' : '', () => {
+    tutorialReturnState = 'play';
+    audioX.until = 0;
+    state = 'tutorialAudio';
+  });
+  row(R + 122, 75, 'RETRY', '', () => resetLevel());
 
   fill(C.white);
   textAlign(LEFT, CENTER);
   textSize(11);
-  text(audioStatus.slice(0, compact ? 52 : 86), 20, 565);
+  text(listening ? 'Voice control is on.' : 'Arrow keys are ready.', 20, 565);
 
   fill('#aaa69b');
-  textAlign(RIGHT);
+  textAlign(LEFT);
+  textSize(10);
   text(
     level.doorMode
       ? '\u2190/\u2192 MOVE DOOR  \u00b7  SHIFT SPRINT  \u00b7  \u2191/W/SPACE HOP'
-      : '\u2190/\u2192 MOVE  \u00b7  SHIFT SPRINT  \u00b7  \u2191/W/SPACE JUMP  \u00b7  \u2193/S STOP',
-    navX - 12, 586
+      : level.ladders && level.ladders.length
+        ? '\u2190/\u2192 MOVE  \u00b7  \u2191/W CLIMB  \u00b7  SPACE JUMP'
+        : '\u2190/\u2192 MOVE  \u00b7  SHIFT SPRINT  \u00b7  \u2191/W/SPACE JUMP',
+    20, 586
   );
 
   noStroke();
@@ -1850,6 +2186,10 @@ function uiButton(x, y, w, h, label, style, action) {
 }
 
 function mousePressed() {
+  if (state === 'tutorialControls' || state === 'tutorialAudio') {
+    return clickAt(mouseX, mouseY);
+  }
+
   const x = mouseX / view.s;
   const y = (mouseY - view.oy) / view.s;
 
@@ -1878,6 +2218,9 @@ function clickAt(x, y) {
 
 function touchStarted() {
   if (touches.length) {
+    if (state === 'tutorialControls' || state === 'tutorialAudio') {
+      return clickAt(touches[0].x, touches[0].y);
+    }
     return clickAt(touches[0].x / view.s, (touches[0].y - view.oy) / view.s);
   }
   return false;
@@ -1898,11 +2241,37 @@ function keyPressed() {
       return false;
     }
     if (n === 13 || n === 32 || k === 'Enter' || k === ' ' || c === 'Space' || c === 'NumpadEnter') {
-      startGame();
+      beginTutorial();
       return false;
     }
     if (c === 'ArrowDown' || k === 'ArrowDown' || n === 40 || n === 83) {
+      beginTutorial();
+      return false;
+    }
+    return true;
+  }
+
+  if (state === 'tutorialControls') {
+    if ([13, 32].includes(codeNum()) || keyVal() === 'Enter' || keyVal() === ' ') {
+      state = 'tutorialAudio';
+      return false;
+    }
+    if (keyVal() === 'Escape') {
       startGame();
+      return false;
+    }
+    return true;
+  }
+
+  if (state === 'tutorialAudio') {
+    if ([13, 32].includes(codeNum()) || keyVal() === 'Enter' || keyVal() === ' ') {
+      if (tutorialReturnState === 'play') resumeGame();
+      else startGame();
+      return false;
+    }
+    if (keyVal() === 'Escape') {
+      if (tutorialReturnState === 'play') resumeGame();
+      else state = 'tutorialControls';
       return false;
     }
     return true;
