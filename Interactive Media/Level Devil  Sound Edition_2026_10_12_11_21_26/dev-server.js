@@ -14,6 +14,7 @@ const MIME = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.ico': 'image/x-icon',
+  '.mp3': 'audio/mpeg',
   '.woff2': 'font/woff2'
 };
 

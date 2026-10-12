@@ -11,6 +11,162 @@ let audioStatus = 'Enable mic, record 4 sounds, then listen. (Or use Arrow Keys)
 
 let audioX = { value: 0, until: 0 };
 let moveSeconds = 0.75;
+let backgroundMusic;
+let musicEnabled = true;
+let soundEffectsEnabled = true;
+let notificationSound;
+let ladderSound;
+let deathSound;
+let gateSound;
+let ladderSoundTimer = null;
+let ladderSoundActive = false;
+const ladderSoundInstances = new Set();
+
+function stopLadderSoundInstances() {
+  for (const instance of ladderSoundInstances) {
+    instance.pause();
+    instance.currentTime = 0;
+  }
+  ladderSoundInstances.clear();
+}
+
+function setSoundEffectsEnabled(enabled) {
+  soundEffectsEnabled = enabled;
+  if (soundEffectsEnabled) return;
+
+  for (const sound of [notificationSound, deathSound, gateSound]) {
+    if (!sound) continue;
+    sound.pause();
+    sound.currentTime = 0;
+  }
+  clearInterval(ladderSoundTimer);
+  ladderSoundTimer = null;
+  ladderSoundActive = false;
+  stopLadderSoundInstances();
+}
+
+function playGateSound() {
+  if (!soundEffectsEnabled) return;
+
+  if (!gateSound) {
+    gateSound = new Audio('good.mp3');
+    gateSound.preload = 'auto';
+    gateSound.volume = 0.55;
+    gateSound.addEventListener('error', () => {
+      console.error('Unable to load good.mp3', gateSound.error);
+    });
+  }
+
+  gateSound.currentTime = 0;
+  gateSound.play().catch(error => {
+    if (error.name === 'AbortError') return;
+    console.warn('Gate sound could not start:', error);
+  });
+}
+
+function playDeathSound() {
+  if (!soundEffectsEnabled) return;
+
+  if (!deathSound) {
+    deathSound = new Audio('glass-breaking.mp3');
+    deathSound.preload = 'auto';
+    deathSound.volume = 0.55;
+    deathSound.addEventListener('error', () => {
+      console.error('Unable to load glass-breaking.mp3', deathSound.error);
+    });
+  }
+
+  deathSound.currentTime = 0;
+  deathSound.play().catch(error => {
+    if (error.name === 'AbortError') return;
+    console.warn('Death sound could not start:', error);
+  });
+}
+
+function playLadderSound() {
+  if (!ladderSound || !soundEffectsEnabled) return;
+
+  const instance = ladderSound.cloneNode();
+  instance.volume = ladderSound.volume;
+  ladderSoundInstances.add(instance);
+  instance.addEventListener('ended', () => ladderSoundInstances.delete(instance), { once: true });
+  instance.play().catch(error => {
+    ladderSoundInstances.delete(instance);
+    if (error.name === 'AbortError') return;
+    console.warn('Ladder sound could not start:', error);
+  });
+}
+
+function setLadderSoundActive(active) {
+  active = active && soundEffectsEnabled;
+  if (active === ladderSoundActive) return;
+  ladderSoundActive = active;
+
+  if (active) {
+    if (!ladderSound) {
+      ladderSound = new Audio('ladder.mp3');
+      ladderSound.preload = 'auto';
+      ladderSound.volume = 0.5;
+      ladderSound.addEventListener('error', () => {
+        console.error('Unable to load ladder.mp3', ladderSound.error);
+      });
+    }
+    playLadderSound();
+    ladderSoundTimer = setInterval(playLadderSound, 500);
+  } else {
+    clearInterval(ladderSoundTimer);
+    ladderSoundTimer = null;
+  }
+}
+
+function playNotificationSound() {
+  if (!soundEffectsEnabled) return;
+
+  if (!notificationSound) {
+    notificationSound = new Audio('new-msg.mp3');
+    notificationSound.preload = 'auto';
+    notificationSound.volume = 0.45;
+    notificationSound.addEventListener('error', () => {
+      console.error('Unable to load new-msg.mp3', notificationSound.error);
+    });
+  }
+
+  notificationSound.currentTime = 0;
+  notificationSound.play().catch(error => {
+    if (error.name === 'AbortError') return;
+    console.warn('Notification sound could not start:', error);
+  });
+}
+
+function startBackgroundMusic() {
+  if (!musicEnabled) return;
+
+  if (!backgroundMusic) {
+    backgroundMusic = new Audio('background-music.mp3');
+    backgroundMusic.loop = true;
+    backgroundMusic.volume = 0.22;
+    backgroundMusic.addEventListener('error', () => {
+      console.error('Unable to load background-music.mp3', backgroundMusic.error);
+    });
+  }
+
+  if (backgroundMusic.paused) {
+    backgroundMusic.play().catch(error => {
+      if (error.name === 'AbortError') return;
+      console.warn('Background music could not start:', error);
+    });
+  }
+}
+
+function setMusicEnabled(enabled) {
+  musicEnabled = enabled;
+  if (!musicEnabled) {
+    if (backgroundMusic) backgroundMusic.pause();
+    return;
+  }
+
+  startBackgroundMusic();
+}
 
 async function enableMic() {
   if (micState === 'on' || micState === 'pending') return;

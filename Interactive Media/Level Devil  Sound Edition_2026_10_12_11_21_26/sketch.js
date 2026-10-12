@@ -7,6 +7,9 @@ let levelIndex = 0, level, player, deaths = 0;
 let levelAttempts = Array(12).fill(0);
 let state = 'play', stateTimer = 0, gameTime = 0, lastFrame = 0;
 let tutorialReturnState = 'start';
+let settingsOpen = false;
+let gameSettings = { screenShake: true, particles: true };
+let gearIcon = null;
 let message = 'Reach the green door. Trust nothing.';
 let messageUntil = 0, messageShownAt = 0, messageDismissOnMove = false, messagePinned = false;
 let particles = [], shake = 0;
@@ -104,6 +107,10 @@ function setup() {
     natureUnlocked = localStorage.getItem('larpdevil.natureUnlocked') === 'true';
     const savedTheme = THEMES.indexOf(localStorage.getItem('larpdevil.theme'));
     if (savedTheme >= 0 && (savedTheme !== 2 || natureUnlocked)) themeIndex = savedTheme;
+    musicEnabled = localStorage.getItem('larpdevil.musicEnabled') !== 'false';
+    soundEffectsEnabled = localStorage.getItem('larpdevil.soundEffectsEnabled') !== 'false';
+    gameSettings.screenShake = localStorage.getItem('larpdevil.screenShake') !== 'false';
+    gameSettings.particles = localStorage.getItem('larpdevil.particles') !== 'false';
   } catch (e) { /* storage unavailable */ }
 
   resetLevel(false);
@@ -257,6 +264,7 @@ function resetLevel(countAttempt = true) {
     messageShownAt = millis();
     messageDismissOnMove = true;
     messagePinned = false;
+    playNotificationSound();
   } else {
     message = '';
     messageUntil = 0;
@@ -282,6 +290,7 @@ function draw() {
   const dt = min((now - (lastFrame || now)) / 1000, 0.04);
   lastFrame = now;
 
+  if (state !== 'play') setLadderSoundActive(false);
   processAudio(now);
 
   if (state === 'title') {
@@ -365,7 +374,10 @@ function updateGame(dt, now) {
   gameTime += dt;
   const p = player;
 
-  if (updateGateRelocation(dt)) return;
+  if (updateGateRelocation(dt)) {
+    setLadderSoundActive(false);
+    return;
+  }
 
   // Moving platforms
   for (const q of level.platforms) {
@@ -448,6 +460,10 @@ const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
     : null;
   const ladder = p.ladder || nearbyLadder || nearRevealedLadder;
   if (ladder && (p.onLadder || climb !== 0) && !(leftPressed || rightPressed)) {
+    const canClimb = climb < 0
+      ? p.y > ladder.y - p.h
+      : climb > 0 && p.y < ladder.y + ladder.h - p.h;
+    setLadderSoundActive(canClimb);
     p.onLadder = true;
     p.ladder = ladder;
     p.x = ladder.x + (ladder.w - p.w) / 2;
@@ -477,6 +493,7 @@ const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
     if (state === 'play' && !level.door.locked && overlap(p, level.door)) win();
     return;
   }
+  setLadderSoundActive(false);
   if (p.onLadder) {
     p.onLadder = false;
     p.ladder = null;
@@ -918,12 +935,14 @@ function die() {
   stateTimer = 0.7;
   deaths++;
   shake = 8;
+  playDeathSound();
   burst(b.x + b.w / 2, b.y + b.h / 2, C.danger, 16);
 }
 
 function win() {
   if (state !== 'play') return;
   state = 'won';
+  playGateSound();
   winPhase = 0;
   winT = 0;
   winOpen = 0;
@@ -1052,6 +1071,8 @@ function updateEnding(dt) {
 }
 
 function burst(x, y, color, count) {
+  if (!gameSettings.particles) return;
+
   for (let i = 0; i < count; i++) {
     particles.push({
       x, y,
@@ -1065,6 +1086,8 @@ function burst(x, y, color, count) {
 }
 
 function dustPuff(x, y, count, spread, size, color) {
+  if (!gameSettings.particles) return;
+
   for (let i = 0; i < count; i++) {
     const side = i % 2 ? 1 : -1;
     particles.push({
@@ -1087,16 +1110,18 @@ function updateParticles(dt) {
     p.life -= dt;
   }
   particles = particles.filter(p => p.life > 0);
-  shake = max(0, shake - dt * 25);
+  shake = gameSettings.screenShake ? max(0, shake - dt * 25) : 0;
 }
 
 function showMessage(s, duration) {
+  const isNewNotification = message !== s || millis() >= messageUntil;
   message = s;
   messageUntil = millis() + duration;
   messageShownAt = millis();
   messageDismissOnMove = false;
   const body = controlled();
   messagePinned = abs(body.vx || 0) > 12 || Boolean(body.moving);
+  if (isNewNotification) playNotificationSound();
 }
 
 function drawScene() {
@@ -1787,6 +1812,13 @@ function roundPath(x, y, w, h, r) {
 }
 
 function loadArtwork() {
+  gearIcon = new Image();
+  gearIcon.onload = () => redraw();
+  gearIcon.onerror = () => {
+    console.error('Unable to load gear.svg');
+  };
+  gearIcon.src = 'gear.svg';
+
   loadImage('hell.png', img => {
     bgArt = img;
     bgCache = null;
@@ -2494,6 +2526,88 @@ function drawControls() {
     levelIndex = (levelIndex + 1) % 12;
     resetLevel();
   });
+
+  const deathsLabel = `DEATHS ${deaths}`;
+  textSize(11);
+  const deathsW = textWidth(deathsLabel) + 28;
+  const deathsX = fw - deathsW - 12;
+  const settingsX = deathsX - 48;
+  buttons.push({
+    x: settingsX, y: 12, w: 40, h: 38,
+    action: () => { settingsOpen = !settingsOpen; }
+  });
+  noStroke();
+  fill(37, 39, 44, 218);
+  rect(settingsX, 12, 40, 38, 8);
+  if (settingsOpen) {
+    noFill();
+    stroke(C.green);
+    strokeWeight(1.5);
+    rect(settingsX + 1, 13, 38, 36, 7);
+    noStroke();
+  }
+  if (gearIcon?.complete && gearIcon.naturalWidth) {
+    drawingContext.save();
+    drawingContext.filter = 'invert(1)';
+    drawingContext.drawImage(gearIcon, settingsX + 7, 18, 26, 26);
+    drawingContext.restore();
+  }
+  drawSettingsPanel(fw, deathsX);
+}
+
+function drawSettingsPanel(fieldWidth, deathsX) {
+  if (!settingsOpen) return;
+
+  const panelW = 202;
+  const panelH = 183;
+  const x = max(12, min(fieldWidth - panelW - 12, deathsX + 2));
+  const y = 58;
+
+  noStroke();
+  fill(37, 39, 44, 238);
+  rect(x + 3, y + 3, panelW, panelH, 5);
+  fill('#493a4c');
+  rect(x, y, panelW, panelH, 5);
+  fill(C.paper);
+  rect(x + 3, y + 3, panelW - 6, panelH - 6, 3);
+
+  fill(C.ink);
+  textAlign(LEFT, CENTER);
+  textStyle(BOLD);
+  textSize(12);
+  text('SETTINGS', x + 12, y + 16);
+  textStyle(NORMAL);
+
+  const rowX = x + 9;
+  const rowW = panelW - 18;
+  const rowH = 29;
+  const firstY = y + 30;
+  uiButton(rowX, firstY, rowW, rowH, `MUSIC  ${musicEnabled ? 'ON' : 'OFF'}`, musicEnabled ? 'on' : '', () => {
+    setMusicEnabled(!musicEnabled);
+    try {
+      localStorage.setItem('larpdevil.musicEnabled', String(musicEnabled));
+    } catch (e) { /* storage unavailable */ }
+  });
+  uiButton(rowX, firstY + 32, rowW, rowH, `SOUND EFFECTS  ${soundEffectsEnabled ? 'ON' : 'OFF'}`, soundEffectsEnabled ? 'on' : '', () => {
+    setSoundEffectsEnabled(!soundEffectsEnabled);
+    try {
+      localStorage.setItem('larpdevil.soundEffectsEnabled', String(soundEffectsEnabled));
+    } catch (e) { /* storage unavailable */ }
+  });
+  uiButton(rowX, firstY + 64, rowW, rowH, `SCREEN SHAKE  ${gameSettings.screenShake ? 'ON' : 'OFF'}`, gameSettings.screenShake ? 'on' : '', () => {
+    gameSettings.screenShake = !gameSettings.screenShake;
+    if (!gameSettings.screenShake) shake = 0;
+    try {
+      localStorage.setItem('larpdevil.screenShake', String(gameSettings.screenShake));
+    } catch (e) { /* storage unavailable */ }
+  });
+  uiButton(rowX, firstY + 96, rowW, rowH, `PARTICLES  ${gameSettings.particles ? 'ON' : 'OFF'}`, gameSettings.particles ? 'on' : '', () => {
+    gameSettings.particles = !gameSettings.particles;
+    if (!gameSettings.particles) particles = [];
+    try {
+      localStorage.setItem('larpdevil.particles', String(gameSettings.particles));
+    } catch (e) { /* storage unavailable */ }
+  });
 }
 
 function uiButton(x, y, w, h, label, style, action) {
@@ -2520,6 +2634,8 @@ function uiButton(x, y, w, h, label, style, action) {
 }
 
 function mousePressed() {
+  startBackgroundMusic();
+
   if (state === 'tutorialControls' || state === 'tutorialAudio') {
     return clickAt(mouseX, mouseY);
   }
@@ -2556,10 +2672,13 @@ function clickAt(x, y) {
       return false;
     }
   }
+  if (settingsOpen) settingsOpen = false;
   return false;
 }
 
 function touchStarted() {
+  startBackgroundMusic();
+
   if (touches.length) {
     if (state === 'tutorialControls' || state === 'tutorialAudio') {
       return clickAt(touches[0].x, touches[0].y);
@@ -2590,6 +2709,13 @@ function touchStarted() {
 }
 
 function keyPressed() {
+  startBackgroundMusic();
+
+  if (settingsOpen && (keyVal() === 'Escape' || codeVal() === 'Escape')) {
+    settingsOpen = false;
+    return false;
+  }
+
   if (state === 'title') {
     const k = keyVal();
     const c = codeVal();
