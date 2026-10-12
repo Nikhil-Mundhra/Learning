@@ -11,6 +11,21 @@ const DOOR_SPEED = 225.5;
 const GRAVITY = 950;
 const MAX_FALL = 620;
 const JUMP_V = -390;
+const SPRINT_MULT = 1.5;
+const STAM_MAX = 100;
+const STAM_DRAIN = 34;
+const STAM_REGEN = 27;
+const STAM_DELAY = 0.7;
+const STAM_RESUME = 20;
+const DRIFT_AMOUNT = 16;
+
+const SKINS = [
+  { name: 'AMBER', base: '#f5ab45', dark: '#bd652f' },
+  { name: 'BRIAR', base: '#dc5d4e', dark: '#a13428' },
+  { name: 'VERDANT', base: '#64a985', dark: '#3d7a59' },
+  { name: 'TIDAL', base: '#6c9ed6', dark: '#3d6a9c' },
+  { name: 'VIOLET', base: '#a98ad6', dark: '#6b4a9c' }
+];
 
 const C = {
   paper: '#f7f0df',
@@ -138,45 +153,58 @@ function buildLevel(i) {
     {
       title: 'RED LIGHT',
       hint: 'A thin beam is safer between pulses.',
-      platforms: [ground(40, 880)],
+      worldW: 1220,
+      platforms: [ground(40, 1180)],
       traps: [
-        trap('laser', 525, 230, 9, 240, 370),
-        trap('pop', 765, FLOOR, 38, 30, 690)
+        trap('laser', 430, 200, 9, 270, 300, 0),
+        trap('pop', 690, FLOOR, 42, 32, 540, 0),
+        trap('laser', 960, 240, 9, 230, 830, 0.9)
       ]
     },
     {
       title: 'THE FINAL LIE',
       hint: 'The first door is a decoy. Watch your footing.',
+      worldW: 1380,
       platforms: [
         ground(40, 300),
         ledge(340, FLOOR, 118, 'crumble'),
         ledge(458, FLOOR, 118, 'crumble'),
-        ground(576, 344)
+        ground(576, 344),
+        ledge(920, FLOOR, 110, 'blink'),
+        ground(1040, 340)
       ],
       traps: [
         trap('fake', 590, FLOOR - 46, 29, 46, 0),
         trap('fall', 735, 170, 45, 45, 630),
-        trap('pop', 808, FLOOR, 35, 31, 755)
+        trap('pop', 808, FLOOR, 35, 31, 700),
+        trap('saw', 1170, FLOOR - 32, 32, 32, 1000, 0.8),
+        trap('laser', 1290, 250, 9, 220, 1180, 1.4)
       ]
     },
     {
       title: 'THE DOOR COMES TO YOU',
       hint: 'You cannot move. The door is yours to steer — and to hop.',
       doorMode: true,
-      platforms: [ground(40, 880)],
+      worldW: 1500,
+      platforms: [ground(40, 1460)],
       traps: [
-        trap('laser', 762, 196, 9, 274, 0, 0),
-        trap('laser', 618, 424, 9, 46, 0, 0.5),
-        trap('laser', 474, 250, 9, 220, 0, 1.02),
-        trap('laser', 330, 424, 9, 46, 0, 1.54),
-        trap('laser', 186, 300, 9, 170, 0, 2.03)
+        trap('laser', 1310, 196, 9, 274, 0, 0),
+        trap('pop', 1150, FLOOR, 44, 32, 950, 0),
+        trap('laser', 990, 240, 9, 230, 0, 0.68),
+        trap('laser', 830, 424, 9, 46, 0, 1.36),
+        trap('pop', 670, FLOOR, 44, 32, 470, 0),
+        trap('laser', 510, 300, 9, 170, 0, 1.02),
+        trap('laser', 350, 420, 9, 50, 0, 0.34),
+        trap('laser', 190, 220, 9, 250, 0, 1.7)
       ]
     }
   ];
 
   const spec = levels[i];
+  const worldW = spec.worldW || FIELD.w;
   return {
     ...spec,
-    door: { x: 872, y: FLOOR - 48, w: 28, h: 48 }
+    worldW,
+    door: { x: worldW - 4, y: FLOOR - 48, w: 28, h: 48 }
   };
 }

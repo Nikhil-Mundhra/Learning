@@ -10,6 +10,44 @@ let messageUntil = 0, particles = [], shake = 0;
 let lastJump = false, jumpQueuedUntil = 0;
 let walkCycle = 0, stepTimer = 0.5, landImpulse = 0, impactSpeed = 0;
 let doorImpact = 0;
+let winPhase = 0, winT = 0, winOpen = 0, winClose = 0, playerSwallow = 0;
+let skinIndex = 0, titleT = 0;
+let stamina = STAM_MAX, stamDelay = 0, exhausted = false, sprinting = false;
+let camX = 0;
+
+function skin() {
+  return SKINS[skinIndex];
+}
+
+function updateStamina(dt, moving, want) {
+  if (want && moving && !exhausted) {
+    sprinting = true;
+    stamina -= STAM_DRAIN * dt;
+    stamDelay = STAM_DELAY;
+    if (stamina <= 0) {
+      stamina = 0;
+      exhausted = true;
+      sprinting = false;
+    }
+  } else {
+    sprinting = false;
+    stamDelay = max(0, stamDelay - dt);
+    if (stamDelay <= 0) stamina = min(STAM_MAX, stamina + STAM_REGEN * dt);
+    if (exhausted && stamina >= STAM_RESUME) exhausted = false;
+  }
+}
+
+function updateCamera() {
+  const body = controlled();
+  const worldW = level.worldW || FIELD.w;
+  const maxX = max(0, worldW - FIELD.w);
+  camX = constrain(body.x + body.w / 2 - FIELD.w / 2, 0, maxX);
+}
+
+const WIN_APPROACH = 0.4;
+const WIN_ENTER = 0.45;
+const WIN_CLOSE = 0.5;
+const WIN_HOLD = 0.3;
 let bgBands = [], bgMotes = [], bgHorns = [], bgEmbers = [];
 
 function setup() {
@@ -17,11 +55,20 @@ function setup() {
   createCanvas(floor(W * s), floor(H * s));
   textFont('monospace');
   buildBackdrop();
+
+  try {
+    const saved = Number(localStorage.getItem('larpdevil.skin'));
+    if (saved >= 0 && saved < SKINS.length) skinIndex = saved;
+  } catch (e) { /* storage unavailable */ }
+
   resetLevel();
+  state = 'title';
 }
 
-function buildBackdrop() {
-  randomSeed(1337);
+function buildBackdrop(worldW = FIELD.w) {
+  randomSeed(1337 + levelIndex);
+  noiseSeed(1337 + levelIndex);
+  const span = worldW;
   bgBands = [];
   bgMotes = [];
   bgHorns = [];
@@ -36,7 +83,7 @@ function buildBackdrop() {
   for (const b of bands) {
     const pts = [];
     let x = FIELD.x - 60;
-    while (x < FIELD.x + FIELD.w + 60) {
+    while (x < FIELD.x + span + 60) {
       pts.push({
         x,
         y: b.base - random(b.amp) - (random() < 0.24 ? b.amp * 0.85 : 0)
@@ -48,7 +95,7 @@ function buildBackdrop() {
 
   for (let i = 0; i < 74; i++) {
     bgMotes.push({
-      x: random(FIELD.x, FIELD.x + FIELD.w),
+      x: random(FIELD.x, FIELD.x + span),
       y: random(FIELD.y + 30, FIELD.y + FIELD.h),
       s: random(1, 3.2),
       depth: random(0.1, 0.62),
@@ -59,7 +106,7 @@ function buildBackdrop() {
 
   for (let i = 0; i < 8; i++) {
     bgEmbers.push({
-      x: random(FIELD.x + 40, FIELD.x + FIELD.w - 40),
+      x: random(FIELD.x + 40, FIELD.x + span - 40),
       y: random(FIELD.y + 60, FIELD.y + FIELD.h - 40),
       s: random(2.2, 4.4),
       depth: random(0.2, 0.5),
@@ -68,7 +115,8 @@ function buildBackdrop() {
     });
   }
 
-  for (let i = 0; i < 13; i++) {
+  const hornCount = max(13, round(span / 66));
+  for (let i = 0; i < hornCount; i++) {
     const depth = 0.16 + random(0, 0.3);
     bgHorns.push({
       x: FIELD.x + 34 + i * 66 + random(-18, 18),
@@ -89,6 +137,12 @@ function windowResized() {
 
 function resetLevel() {
   level = buildLevel(levelIndex);
+  buildBackdrop(level.worldW);
+  camX = 0;
+  stamina = STAM_MAX;
+  stamDelay = 0;
+  exhausted = false;
+  sprinting = false;
   player = {
     x: 76, y: FLOOR - 32, w: 24, h: 32,
     vx: 0, vy: 0, grounded: true, coyote: 0, face: 1
@@ -111,6 +165,11 @@ function resetLevel() {
   stepTimer = 0.5;
   landImpulse = 0;
   doorImpact = 0;
+  winPhase = 0;
+  winT = 0;
+  winOpen = 0;
+  winClose = 0;
+  playerSwallow = 0;
   level.door.vy = 0;
   level.door.grounded = true;
   level.door.coyote = 0;
@@ -126,14 +185,20 @@ function draw() {
 
   processAudio(now);
 
+  if (state === 'title') {
+    titleT += dt;
+    updateParticles(dt);
+    drawTitle();
+    return;
+  }
+
   if (state === 'play') {
     updateGame(dt, now);
-  } else if (state === 'dead' || state === 'won') {
+  } else if (state === 'won') {
+    updateWinAnim(dt);
+  } else if (state === 'dead') {
     stateTimer -= dt;
-    if (stateTimer <= 0) {
-      if (state === 'won') levelIndex = (levelIndex + 1) % 12;
-      resetLevel();
-    }
+    if (stateTimer <= 0) resetLevel();
   }
 
   updateParticles(dt);
@@ -183,6 +248,8 @@ function updateGame(dt, now) {
   const leftPressed = keyIsDown(LEFT_ARROW) || keyIsDown(65);   // 65: 'A'
   const downPressed = keyIsDown(DOWN_ARROW) || keyIsDown(83);   // 83: 'S'
   const upPressed = keyIsDown(UP_ARROW) || keyIsDown(87) || keyIsDown(32); // 87: 'W', 32: Space
+  const shiftDown =
+    keyIsDown(SHIFT) || keyIsDown(16) || keyIsDown('ShiftLeft') || keyIsDown('ShiftRight');
 
   // Down Arrow halts active audio movement timers immediately (like voice 'DOWN')
   if (downPressed && audioX.until > now) {
@@ -206,9 +273,12 @@ function updateGame(dt, now) {
   }
   lastJump = upPressed;
 
+  updateStamina(dt, move !== 0, shiftDown);
+
   if (level.doorMode) {
     const d = level.door;
-    d.x = constrain(d.x + move * DOOR_SPEED * dt, FIELD.x + 4, W - FIELD.x - 4 - d.w);
+    const spd = sprinting ? DOOR_SPEED * SPRINT_MULT : DOOR_SPEED;
+    d.x = constrain(d.x + move * spd * dt, FIELD.x + 4, level.worldW - 4 - d.w);
     if (move !== 0) d.moving = 1;
     else d.moving = max(0, d.moving - dt * 4);
 
@@ -248,13 +318,18 @@ function updateGame(dt, now) {
     }
     doorImpact = max(0, doorImpact - dt * 4.6);
 
+    updateCamera();
     updateTraps();
 
     if (state === 'play' && overlap(p, d)) win();
     return;
   }
 
-  p.vx = move * RUN_SPEED;
+  const spd = sprinting ? RUN_SPEED * SPRINT_MULT : RUN_SPEED;
+  const drift = p.grounded && move !== 0
+    ? (noise(gameTime * 1.7, levelIndex * 13) - 0.5) * DRIFT_AMOUNT
+    : 0;
+  p.vx = move * spd + drift;
   if (move !== 0) p.face = move > 0 ? 1 : -1;
 
   // Jump execution with coyote time
@@ -263,13 +338,13 @@ function updateGame(dt, now) {
     p.grounded = false;
     p.coyote = 0;
     jumpQueuedUntil = 0;
-    dustPuff(p.x + p.w / 2, p.y + p.h, 5, 46, 4, C.amber);
+    dustPuff(p.x + p.w / 2, p.y + p.h, 5, 46, 4, skin().base);
   }
 
   // Horizontal movement & collision
   const oldX = p.x;
   const oldY = p.y;
-  p.x = constrain(p.x + p.vx * dt, 41, W - 40 - p.w);
+  p.x = constrain(p.x + p.vx * dt, FIELD.x - 1, level.worldW - 4 - p.w);
 
   for (const q of level.platforms) {
     if (!isSolid(q) || q.y >= FLOOR || !overlap(p, q)) continue;
@@ -348,6 +423,7 @@ function updateGame(dt, now) {
     }
   }
 
+  updateCamera();
   updateTraps();
 
   if (p.y > H + 20) die();
@@ -463,8 +539,81 @@ function die() {
 function win() {
   if (state !== 'play') return;
   state = 'won';
-  stateTimer = 1;
+  winPhase = 0;
+  winT = 0;
+  winOpen = 0;
+  winClose = 0;
+  playerSwallow = 0;
   burst(level.door.x + 14, level.door.y + 20, C.green, 20);
+}
+
+function easeInOut(t) {
+  return t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2;
+}
+
+function updateWinAnim(dt) {
+  winT += dt;
+  const d = level.door;
+  const p = player;
+
+  if (winPhase === 0) {
+    winOpen = constrain(winT / WIN_APPROACH, 0, 1);
+    const dx = d.x + d.w / 2 - p.w / 2 - p.x;
+
+    if (level.doorMode) {
+      const doorErr = p.x + p.w / 2 - d.w / 2 - d.x;
+      d.x = constrain(
+        d.x + doorErr * min(1, dt * 7),
+        FIELD.x + 4,
+        W - FIELD.x - 4 - d.w
+      );
+    } else if (abs(dx) > 1.5) {
+      const step = min(abs(dx), 300 * dt);
+      p.x += dx > 0 ? step : -step;
+      p.face = dx > 0 ? 1 : -1;
+      p.vx = dx > 0 ? 300 : -300;
+      walkCycle += dt * 13;
+    } else {
+      p.x = d.x + d.w / 2 - p.w / 2;
+      p.vx = 0;
+    }
+
+    if (winOpen >= 1 && abs(dx) <= 1.5) {
+      winPhase = 1;
+      winT = 0;
+      stepTimer = 0;
+    }
+    return;
+  }
+
+  if (winPhase === 1) {
+    playerSwallow = constrain(winT / WIN_ENTER, 0, 1);
+    const t = easeInOut(playerSwallow);
+    p.y = lerp(p.y, d.y + (d.h - p.h) / 2, t * 0.5);
+    p.vx = 0;
+    if (playerSwallow >= 1) {
+      winPhase = 2;
+      winT = 0;
+    }
+    return;
+  }
+
+  if (winPhase === 2) {
+    winClose = constrain(winT / WIN_CLOSE, 0, 1);
+    if (random() < 0.3) burst(d.x + d.w / 2, d.y + d.h / 2, C.green, 2);
+    if (winClose >= 1) {
+      winPhase = 3;
+      winT = 0;
+      shake = max(shake, 4);
+      burst(d.x + d.w / 2, d.y + d.h / 2, C.amber, 14);
+    }
+    return;
+  }
+
+  if (winT >= WIN_HOLD) {
+    levelIndex = (levelIndex + 1) % 12;
+    resetLevel();
+  }
 }
 
 function burst(x, y, color, count) {
@@ -538,7 +687,7 @@ function drawScene() {
 
   push();
   translate(
-    shake ? random(-shake, shake) : 0,
+    -camX + (shake ? random(-shake, shake) : 0),
     shake ? random(-shake, shake) : 0
   );
   drawWorld();
@@ -546,7 +695,7 @@ function drawScene() {
 
   drawControls();
 
-  if (state === 'dead' || state === 'won') {
+  if (state === 'dead' || (state === 'won' && winPhase === 3 && winT >= WIN_HOLD * 0.45)) {
     fill(37, 39, 44, 185);
     rect(0, 137, W, 357);
 
@@ -569,6 +718,142 @@ function drawScene() {
   }
 }
 
+function swatchRect(i) {
+  const w = 92, gap = 24;
+  const total = SKINS.length * w + (SKINS.length - 1) * gap;
+  return {
+    x: FIELD.x + (FIELD.w - total) / 2 + i * (w + gap),
+    y: 300,
+    w,
+    h: 108
+  };
+}
+
+function drawMiniPlayer(cx, baseY, s, sk) {
+  const w = 24 * s, h = 32 * s;
+  push();
+  translate(cx - w / 2, baseY - h);
+  noStroke();
+  fill(sk.dark);
+  rect(0, h - 8 * s, 6 * s, 8 * s, 1.5);
+  rect(w - 6 * s, h - 8 * s, 6 * s, 8 * s, 1.5);
+  rect(0, 0, w, h, 5 * s);
+  fill(sk.base);
+  rect(2 * s, 2 * s, w - 4 * s, h - 6 * s, 4 * s);
+  fill(C.ink);
+  rect(w - 9 * s, 11 * s, 3 * s, 4 * s, 1);
+  pop();
+}
+
+function startGame() {
+  try {
+    localStorage.setItem('larpdevil.skin', String(skinIndex));
+  } catch (e) { /* storage unavailable */ }
+  levelIndex = 0;
+  resetLevel();
+}
+
+function drawTitle() {
+  const fx = FIELD.x, fw = FIELD.w;
+
+  drawBackdrop();
+
+  buttons = [];
+
+  noStroke();
+  fill(C.ink);
+  rect(0, 0, W, 76);
+  rect(0, 502, W, 98);
+
+  fill(C.amber);
+  textSize(22);
+  textStyle(BOLD);
+  textAlign(LEFT, CENTER);
+  text('LARP DEVIL', 40, 29);
+  fill(C.white);
+  textStyle(NORMAL);
+  textSize(12);
+  text('SOUND EDITION', 42, 57);
+  textAlign(RIGHT);
+  text('12 LEVELS  ·  1 OF THEM LIES', W - 40, 42);
+  textAlign(LEFT, CENTER);
+
+  textAlign(CENTER, CENTER);
+  fill(C.ink);
+  textStyle(BOLD);
+  textSize(46);
+  text('LARP DEVIL', W / 2, 212);
+
+  textStyle(NORMAL);
+  textSize(13);
+  fill(C.ink);
+  text('The exit is a suggestion. Reach the green door anyway.', W / 2, 250);
+
+  textSize(11);
+  fill(C.muted);
+  text('CHOOSE YOUR SKIN', W / 2, 280);
+
+  SKINS.forEach((sk, i) => {
+    const r = swatchRect(i);
+    const sel = i === skinIndex;
+
+    noStroke();
+    fill(sel ? C.ink : 255, 251, 239, sel ? 255 : 150);
+    rect(r.x, r.y, r.w, r.h, 8);
+
+    noFill();
+    if (sel) {
+      stroke(C.amber);
+      strokeWeight(2);
+    } else {
+      stroke(C.line);
+      strokeWeight(1);
+    }
+    rect(r.x, r.y, r.w, r.h, 8);
+    noStroke();
+
+    drawMiniPlayer(r.x + r.w / 2, r.y + 68, 1.05, sk);
+
+    fill(sel ? C.white : C.ink);
+    textStyle(sel ? BOLD : NORMAL);
+    textSize(10);
+    textAlign(CENTER, CENTER);
+    text(sk.name, r.x + r.w / 2, r.y + 86);
+
+    if (sel) {
+      fill(C.amber);
+      textSize(13);
+      text('▾', r.x + r.w / 2, r.y - 12);
+    }
+  });
+
+  const blink = floor(titleT * 2) % 2 === 0;
+  if (blink) {
+    fill(C.ink);
+    textStyle(BOLD);
+    textSize(13);
+    text('PRESS ENTER OR CLICK TO BEGIN', W / 2, 445);
+    textStyle(NORMAL);
+  }
+
+  uiButton(
+    18, 512, 109, 32,
+    micState === 'on' ? 'MIC ON' : 'ENABLE MIC',
+    micState === 'on' ? 'on' : 'accent',
+    () => enableMic()
+  );
+  uiButton(617, 512, 128, 32, 'BEGIN  ⏎', 'accent', () => startGame());
+
+  fill(C.white);
+  textAlign(LEFT, CENTER);
+  textSize(11);
+  text(audioStatus.slice(0, 86), 20, 565);
+
+  fill('#aaa69b');
+  textAlign(RIGHT);
+  text('←/→ CHANGE SKIN  ·  ENTER BEGIN  ·  SHIFT SPRINTS IN-GAME', 944, 565);
+}
+
 function roundPath(x, y, w, h, r) {
   const c = drawingContext;
   c.beginPath();
@@ -582,8 +867,9 @@ function roundPath(x, y, w, h, r) {
 
 function drawBackdrop() {
   const ctx = drawingContext;
-  const fx = FIELD.x, fy = FIELD.y, fw = FIELD.w, fh = FIELD.h;
-  const drift = -(player.x - 76);
+  const worldW = level && level.worldW ? level.worldW : FIELD.w;
+  const fx = FIELD.x + camX, fy = FIELD.y, fw = FIELD.w, fh = FIELD.h;
+  const drift = -(controlled().x - 76);
 
   ctx.save();
   roundPath(fx, fy, fw, fh, 11);
@@ -594,9 +880,9 @@ function drawBackdrop() {
   sky.addColorStop(0.58, C.skyLow);
   sky.addColorStop(1, C.halo);
   ctx.fillStyle = sky;
-  ctx.fillRect(fx, fy, fw, fh);
+  ctx.fillRect(FIELD.x - 60, fy, worldW + 120, fh);
 
-  const sunX = fx + fw * 0.74;
+  const sunX = FIELD.x + worldW * 0.74;
   const sunY = fy + fh * 0.3;
   const sun = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 168);
   sun.addColorStop(0, 'rgba(255, 233, 184, 0.85)');
@@ -797,16 +1083,34 @@ function drawWorld() {
     }
   }
 
+  const open = winOpen * (1 - winClose);
+
   push();
   translate(d.x + d.w / 2, d.y + d.h);
   scale(dsx, dsy);
 
   fill(C.green);
   rect(-d.w / 2, -d.h, d.w, d.h, 3);
+
   fill(C.ink);
   rect(-d.w / 2 + 5, -d.h + 6, d.w - 10, d.h - 6, 2);
-  fill(C.amber);
-  circle(d.w / 2 - 8, -d.h + 27, 4);
+
+  const iw = d.w - 10;
+  const pw = (iw / 2) * (1 - open);
+  fill(C.green);
+  rect(-iw / 2, -d.h + 6, pw, d.h - 6, 1);
+  rect(iw / 2 - pw, -d.h + 6, pw, d.h - 6, 1);
+
+  if (pw > 2) {
+    fill(0, 0, 0, 55);
+    rect(-0.6, -d.h + 6, 1.2, d.h - 6);
+    rect(iw / 2 - pw, -d.h + 6, 1.2, d.h - 6);
+  }
+
+  if (open < 0.5) {
+    fill(C.amber);
+    circle(d.w / 2 - 8, -d.h + 27, 4);
+  }
 
   pop();
 
@@ -921,6 +1225,7 @@ function drawPlayer() {
   if (state === 'dead') return;
 
   const p = player;
+  const sk = skin();
   const speed = abs(p.vx);
   const running = p.grounded && speed > 12;
 
@@ -950,6 +1255,11 @@ function drawPlayer() {
   rotate(lean);
   scale(sx, sy);
 
+  if (playerSwallow > 0) {
+    scale(1 - playerSwallow * 0.92, 1 - playerSwallow * 0.92);
+    drawingContext.globalAlpha = 1 - playerSwallow * 0.55;
+  }
+
   if (p.grounded) {
     noStroke();
     fill(37, 39, 44, 55);
@@ -957,7 +1267,7 @@ function drawPlayer() {
   }
 
   // Legs
-  fill(C.amberDark);
+  fill(sk.dark);
   rect(-p.w / 2, -8, 6, 8, 1.5);
   rect(1, -8, 6, 8, 1.5);
   rect(-p.w / 2 + swing, -8, 6, 8 - max(0, swing) * 0.9, 1.5);
@@ -969,10 +1279,10 @@ function drawPlayer() {
   }
 
   // Body
-  fill(C.amberDark);
+  fill(sk.dark);
   rect(-p.w / 2, -p.h, p.w, p.h, 5);
 
-  fill(C.amber);
+  fill(sk.base);
   rect(-p.w / 2 + 2, -p.h + 2 + bob, p.w - 4, p.h - 6, 4);
 
   // Eye
@@ -1075,10 +1385,33 @@ function drawControls() {
   textAlign(RIGHT);
   text(
     level.doorMode
-      ? '←/→ or A/D MOVE THE DOOR  ·  ↑/W/SPACE HOP  ·  R RESTART'
-      : '←/→ or A/D MOVE  ·  ↑/W/SPACE JUMP  ·  ↓/S STOP  ·  R RESTART',
+      ? '←/→ MOVE DOOR  ·  SHIFT SPRINT  ·  ↑/W/SPACE HOP  ·  R RESTART'
+      : '←/→ MOVE  ·  SHIFT SPRINT  ·  ↑/W/SPACE JUMP  ·  ↓/S STOP  ·  R RESTART',
     944, 586
   );
+
+  noStroke();
+  fill('#55585b');
+  rect(300, 559, 200, 9, 4.5);
+
+  const st = stamina / STAM_MAX;
+  const barCol = exhausted ? C.danger : st < 0.3 ? C.amberDark : C.green;
+  fill(barCol);
+  rect(300, 559, max(4, 200 * st), 9, 4.5);
+
+  if (exhausted) {
+    fill(C.danger);
+    textAlign(LEFT, CENTER);
+    textStyle(BOLD);
+    textSize(10);
+    text('WINDED', 508, 563);
+    textStyle(NORMAL);
+  } else {
+    fill('#aaa69b');
+    textAlign(LEFT, CENTER);
+    textSize(10);
+    text(sprinting ? 'SPRINT' : 'SHIFT TO SPRINT', 508, 563);
+  }
 
   fill('#55585b');
   rect(858, 559, 81, 5, 3);
@@ -1110,7 +1443,20 @@ function uiButton(x, y, w, h, label, style, action) {
 }
 
 function mousePressed() {
-  return clickAt(mouseX * W / width, mouseY * H / height);
+  const x = mouseX * W / width;
+  const y = mouseY * H / height;
+
+  if (state === 'title') {
+    for (let i = 0; i < SKINS.length; i++) {
+      const r = swatchRect(i);
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+        skinIndex = i;
+        return false;
+      }
+    }
+  }
+
+  return clickAt(x, y);
 }
 
 function clickAt(x, y) {
@@ -1131,6 +1477,26 @@ function touchStarted() {
 }
 
 function keyPressed() {
+  if (state === 'title') {
+    if (keyCode === LEFT_ARROW || keyCode === 65) {
+      skinIndex = (skinIndex + SKINS.length - 1) % SKINS.length;
+      return false;
+    }
+    if (keyCode === RIGHT_ARROW || keyCode === 68) {
+      skinIndex = (skinIndex + 1) % SKINS.length;
+      return false;
+    }
+    if (keyCode === 13 || keyCode === ENTER || keyCode === 32) {
+      startGame();
+      return false;
+    }
+    if (keyCode === DOWN_ARROW || keyCode === 83) {
+      startGame();
+      return false;
+    }
+    return true;
+  }
+
   if (key === 'r' || key === 'R') resetLevel();
 
   // Instant halt on Down Arrow or S
