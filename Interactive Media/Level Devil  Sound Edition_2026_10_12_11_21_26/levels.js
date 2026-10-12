@@ -3,6 +3,7 @@
 // ==========================================
 
 const W = 960, H = 600, FLOOR = 470;
+const WORLD_BASE = 876;
 const NAMES = ['DOWN', 'LEFT', 'RIGHT', 'UP'];
 const BINS = 14, SAMPLE_MS = 35;
 const FIELD = { x: 42, y: 144, w: 876, h: 331 };
@@ -45,7 +46,16 @@ const C = {
   ridgeFar: '#d5c4a4',
   ridgeMid: '#b7a383',
   ridgeNear: '#8d7a5e',
-  ember: '#ffd98f'
+  ember: '#ffd98f',
+  mint: '#dcecd2',
+  skyGreen: '#eef5e0',
+  hillFar: '#a9cf94',
+  hillMid: '#79b268',
+  hillNear: '#4f8c4d',
+  grass: '#3f7a45',
+  bark: '#6b563f',
+  leaf: '#5d9e57',
+  leafLight: '#7fbb6f'
 };
 
 function buildLevel(i) {
@@ -201,10 +211,21 @@ function buildLevel(i) {
   ];
 
   const spec = levels[i];
-  const worldW = spec.worldW || FIELD.w;
+  if (!spec) {
+    throw new Error('buildLevel: no level at index ' + i + ' (count ' + levels.length + ')');
+  }
+  const worldW = spec.worldW || WORLD_BASE;
+
+  const solids = spec.platforms.filter(p => p.y >= FLOOR && (!p.kind || p.kind === 'solid'));
+  if (solids.length) {
+    const left = solids.reduce((a, b) => (a.x < b.x ? a : b));
+    left.x = 0;
+  }
+
   return {
     ...spec,
     worldW,
+    leftBound: 0,
     door: { x: worldW - 4, y: FLOOR - 48, w: 28, h: 48 }
   };
 }

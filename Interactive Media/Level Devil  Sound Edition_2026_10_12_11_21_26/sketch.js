@@ -40,8 +40,9 @@ function updateStamina(dt, moving, want) {
 function updateCamera() {
   const body = controlled();
   const worldW = level.worldW || FIELD.w;
-  const maxX = max(0, worldW - FIELD.w);
-  camX = constrain(body.x + body.w / 2 - FIELD.w / 2, 0, maxX);
+  const visW = FIELD.w;
+  const maxX = max(0, worldW - visW);
+  camX = constrain(body.x + body.w / 2 - visW / 2, 0, maxX);
 }
 
 const WIN_APPROACH = 0.4;
@@ -49,12 +50,27 @@ const WIN_ENTER = 0.45;
 const WIN_CLOSE = 0.5;
 const WIN_HOLD = 0.3;
 let bgBands = [], bgMotes = [], bgHorns = [], bgEmbers = [];
+let endHills = [], endTrees = [], endPollen = [];
+let bgArt = null, endArt = null;
+let bgCache = null, endCache = null;
+let view = { s: 1, oy: 0, slackTop: 0, visW: W };
+let endT = 0;
+
+function layout() {
+  view.s = min(windowHeight / H, windowWidth / 700);
+  view.visW = windowWidth / view.s;
+  view.oy = windowHeight - H * view.s;
+  view.slackTop = view.oy / view.s;
+  FIELD.x = 0;
+  FIELD.w = view.visW;
+}
 
 function setup() {
-  const s = min(1, windowWidth / W, windowHeight / H);
-  createCanvas(floor(W * s), floor(H * s));
+  createCanvas(windowWidth, windowHeight);
   textFont('monospace');
-  buildBackdrop();
+  layout();
+  buildBackdrop(FIELD.w);
+  loadArtwork();
 
   try {
     const saved = Number(localStorage.getItem('larpdevil.skin'));
@@ -75,20 +91,37 @@ function buildBackdrop(worldW = FIELD.w) {
   bgEmbers = [];
 
   const bands = [
-    { depth: 0.08, base: 396, amp: 62, step: 104, col: C.ridgeFar },
-    { depth: 0.17, base: 428, amp: 44, step: 78, col: C.ridgeMid },
-    { depth: 0.29, base: 456, amp: 28, step: 62, col: C.ridgeNear }
+    {
+      depth: 0.08, base: 402, amp: 68, col: C.ridgeFar, smooth: false,
+      step: 30, rim: 0.22, ridge: 1.75, waves: [[1.3, 1], [3.1, 0.44], [6.7, 0.2]]
+    },
+    {
+      depth: 0.17, base: 434, amp: 48, col: C.ridgeMid, smooth: true,
+      step: 26, rim: 0.34, ridge: 1.1, waves: [[1.0, 1], [2.6, 0.4], [5.1, 0.17]]
+    },
+    {
+      depth: 0.29, base: 460, amp: 30, col: C.ridgeNear, smooth: true,
+      step: 22, rim: 0.46, ridge: 1, waves: [[0.8, 1], [2.1, 0.36]]
+    }
   ];
 
   for (const b of bands) {
     const pts = [];
-    let x = FIELD.x - 60;
-    while (x < FIELD.x + span + 60) {
-      pts.push({
-        x,
-        y: b.base - random(b.amp) - (random() < 0.24 ? b.amp * 0.85 : 0)
-      });
-      x += b.step * random(0.72, 1.34);
+    const wave = 230 + random(150);
+    const freqs = b.waves.map(w => w[0] * (0.8 + random(0.42)));
+    const amps = b.waves.map(w => w[1]);
+    const phases = b.waves.map(() => random(TWO_PI));
+    const norm = amps.reduce((acc, v) => acc + v, 0);
+    const x0 = FIELD.x - 120;
+    const x1 = FIELD.x + span + 120;
+
+    for (let x = x0; x <= x1; x += b.step) {
+      let h = 0;
+      for (let i = 0; i < freqs.length; i++) {
+        h += sin((x / wave) * TWO_PI * freqs[i] + phases[i]) * amps[i];
+      }
+      const t = pow(0.5 + 0.5 * (h / norm), b.ridge);
+      pts.push({ x, y: b.base - b.amp * t });
     }
     bgBands.push({ ...b, pts });
   }
@@ -131,13 +164,17 @@ function buildBackdrop(worldW = FIELD.w) {
 }
 
 function windowResized() {
-  const s = min(1, windowWidth / W, windowHeight / H);
-  resizeCanvas(floor(W * s), floor(H * s));
+  resizeCanvas(windowWidth, windowHeight);
+  layout();
+  bgCache = null;
+  endCache = null;
+  if (level) buildBackdrop(max(level.worldW, FIELD.w));
+  if (state === 'ending') buildEndingScene();
 }
 
 function resetLevel() {
   level = buildLevel(levelIndex);
-  buildBackdrop(level.worldW);
+  buildBackdrop(max(level.worldW, FIELD.w));
   camX = 0;
   stamina = STAM_MAX;
   stamDelay = 0;
@@ -192,6 +229,13 @@ function draw() {
     return;
   }
 
+  if (state === 'ending') {
+    updateEnding(dt);
+    updateParticles(dt);
+    drawEnding();
+    return;
+  }
+
   if (state === 'play') {
     updateGame(dt, now);
   } else if (state === 'won') {
@@ -203,13 +247,50 @@ function draw() {
 
   updateParticles(dt);
   push();
-  scale(width / W, height / H);
+  translate(0, view.oy);
+  scale(view.s);
   drawScene();
   pop();
 }
 
 function controlled() {
   return level.doorMode ? level.door : player;
+}
+
+// p5 2.x dropped numeric keycodes from keyIsDown(); 1.x only tracks them.
+// Passing both forms is safe: a miss is a plain false, never a throw.
+function keyAny() {
+  for (let i = 0; i < arguments.length; i++) {
+    if (keyIsDown(arguments[i])) return true;
+  }
+  return false;
+}
+
+function keyVal() {
+  return typeof key === 'string' ? key : '';
+}
+
+function codeVal() {
+  return typeof code === 'undefined' ? '' : typeof code === 'string' ? code : '';
+}
+
+function codeNum() {
+  return typeof keyCode === 'number' ? keyCode : -1;
+}
+
+function isDownKey() {
+  return codeVal() === 'ArrowDown' || keyVal() === 'ArrowDown' || codeNum() === 40 || codeNum() === 83;
+}
+
+function isNavKey() {
+  const k = keyVal();
+  const c = codeVal();
+  const n = codeNum();
+  return (
+    ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Space'].includes(k) ||
+    ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(c) ||
+    [32, 37, 38, 39, 40].includes(n)
+  );
 }
 
 function updateGame(dt, now) {
@@ -244,12 +325,11 @@ function updateGame(dt, now) {
   // ------------------------------------------
   // INPUT SYSTEM: ARROW KEYS & WASD FALLBACK
   // ------------------------------------------
-  const rightPressed = keyIsDown(RIGHT_ARROW) || keyIsDown(68); // 68: 'D'
-  const leftPressed = keyIsDown(LEFT_ARROW) || keyIsDown(65);   // 65: 'A'
-  const downPressed = keyIsDown(DOWN_ARROW) || keyIsDown(83);   // 83: 'S'
-  const upPressed = keyIsDown(UP_ARROW) || keyIsDown(87) || keyIsDown(32); // 87: 'W', 32: Space
-  const shiftDown =
-    keyIsDown(SHIFT) || keyIsDown(16) || keyIsDown('ShiftLeft') || keyIsDown('ShiftRight');
+const rightPressed = keyAny(RIGHT_ARROW, 39, 'ArrowRight', 68, 'KeyD', 'd');
+const leftPressed = keyAny(LEFT_ARROW, 37, 'ArrowLeft', 65, 'KeyA', 'a');
+const downPressed = keyAny(DOWN_ARROW, 40, 'ArrowDown', 83, 'KeyS', 's');
+const upPressed = keyAny(UP_ARROW, 38, 'ArrowUp', 87, 'KeyW', 'w', 32, ' ', 'Space');
+const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
 
   // Down Arrow halts active audio movement timers immediately (like voice 'DOWN')
   if (downPressed && audioX.until > now) {
@@ -278,7 +358,7 @@ function updateGame(dt, now) {
   if (level.doorMode) {
     const d = level.door;
     const spd = sprinting ? DOOR_SPEED * SPRINT_MULT : DOOR_SPEED;
-    d.x = constrain(d.x + move * spd * dt, FIELD.x + 4, level.worldW - 4 - d.w);
+    d.x = constrain(d.x + move * spd * dt, level.leftBound, level.worldW - 4 - d.w);
     if (move !== 0) d.moving = 1;
     else d.moving = max(0, d.moving - dt * 4);
 
@@ -344,7 +424,7 @@ function updateGame(dt, now) {
   // Horizontal movement & collision
   const oldX = p.x;
   const oldY = p.y;
-  p.x = constrain(p.x + p.vx * dt, FIELD.x - 1, level.worldW - 4 - p.w);
+  p.x = constrain(p.x + p.vx * dt, level.leftBound, level.door.x - p.w + 10);
 
   for (const q of level.platforms) {
     if (!isSolid(q) || q.y >= FLOOR || !overlap(p, q)) continue;
@@ -611,8 +691,54 @@ function updateWinAnim(dt) {
   }
 
   if (winT >= WIN_HOLD) {
+    if (levelIndex === 11) {
+      enterEnding();
+      return;
+    }
     levelIndex = (levelIndex + 1) % 12;
     resetLevel();
+  }
+}
+
+function enterEnding() {
+  state = 'ending';
+  endT = 0;
+  camX = 0;
+  winClose = 1;
+  playerSwallow = 0;
+  const d = level.door;
+  d.x = 236;
+  d.vy = 0;
+  d.grounded = true;
+  d.moving = 0;
+  player.face = 1;
+  player.vx = 0;
+  player.vy = 0;
+  player.grounded = true;
+  player.y = 462 - player.h;
+  player.x = d.x - player.w - 2;
+  buildEndingScene();
+}
+
+function updateEnding(dt) {
+  endT += dt;
+  const d = level.door;
+
+  if (endT < 1.5) {
+    const t = constrain(endT / 1.5, 0, 1);
+    player.x = d.x - player.w + t * (150 + d.w);
+    player.face = 1;
+    player.vx = RUN_SPEED;
+    player.grounded = true;
+    player.y = 462 - player.h;
+    walkCycle += dt * 13;
+    stepTimer -= dt;
+    if (stepTimer <= 0) {
+      stepTimer = 0.5;
+      dustPuff(player.x, 462, 2, 26, 3, C.grass);
+    }
+  } else {
+    player.vx = 0;
   }
 }
 
@@ -665,7 +791,7 @@ function drawScene() {
   noStroke();
 
   fill(C.ink);
-  rect(0, 0, W, 76);
+  rect(0, -view.slackTop, FIELD.w, 76 + view.slackTop);
 
   fill(C.amber);
   textSize(22);
@@ -679,11 +805,11 @@ function drawScene() {
   text(`LEVEL ${String(levelIndex + 1).padStart(2, '0')} / 12     ${level.title}`, 42, 57);
 
   textAlign(RIGHT);
-  text(`DEATHS ${deaths}`, 920, 32);
+  text(`DEATHS ${deaths}`, FIELD.w - 40, 32);
   textAlign(LEFT);
 
   fill(C.sky);
-  rect(0, 76, W, 426);
+  rect(0, 76, FIELD.w, 426);
 
   push();
   translate(
@@ -697,7 +823,7 @@ function drawScene() {
 
   if (state === 'dead' || (state === 'won' && winPhase === 3 && winT >= WIN_HOLD * 0.45)) {
     fill(37, 39, 44, 185);
-    rect(0, 137, W, 357);
+    rect(0, 137, FIELD.w, 357);
 
     fill(C.white);
     textStyle(BOLD);
@@ -762,8 +888,8 @@ function drawTitle() {
 
   noStroke();
   fill(C.ink);
-  rect(0, 0, W, 76);
-  rect(0, 502, W, 98);
+  rect(0, -view.slackTop, FIELD.w, 76 + view.slackTop);
+  rect(0, 502, FIELD.w, 98);
 
   fill(C.amber);
   textSize(22);
@@ -775,7 +901,7 @@ function drawTitle() {
   textSize(12);
   text('SOUND EDITION', 42, 57);
   textAlign(RIGHT);
-  text('12 LEVELS  ·  1 OF THEM LIES', W - 40, 42);
+  text('12 LEVELS  ·  1 OF THEM LIES', FIELD.w - 40, 42);
   textAlign(LEFT, CENTER);
 
   textAlign(CENTER, CENTER);
@@ -851,7 +977,231 @@ function drawTitle() {
 
   fill('#aaa69b');
   textAlign(RIGHT);
-  text('←/→ CHANGE SKIN  ·  ENTER BEGIN  ·  SHIFT SPRINTS IN-GAME', 944, 565);
+  text('←/→ CHANGE SKIN  ·  ENTER BEGIN  ·  SHIFT SPRINTS IN-GAME', FIELD.w - 20, 565);
+}
+
+function buildEndingScene() {
+  randomSeed(90210);
+  endHills = [];
+  endTrees = [];
+  endPollen = [];
+
+  const bands = [
+    { base: 404, amp: 40, col: C.hillFar, smooth: true, step: 28, waves: [[1.1, 1], [2.7, 0.4]] },
+    { base: 440, amp: 28, col: C.hillMid, smooth: true, step: 24, waves: [[0.9, 1], [2.2, 0.36]] },
+    { base: 470, amp: 16, col: C.hillNear, smooth: true, step: 20, waves: [[0.7, 1]] }
+  ];
+
+  for (const b of bands) {
+    const pts = [];
+    const wave = 230 + random(150);
+    const freqs = b.waves.map(w => w[0] * (0.8 + random(0.42)));
+    const amps = b.waves.map(w => w[1]);
+    const phases = b.waves.map(() => random(TWO_PI));
+    const norm = amps.reduce((acc, v) => acc + v, 0);
+    for (let x = FIELD.x - 120; x <= FIELD.x + FIELD.w + 120; x += b.step) {
+      let h = 0;
+      for (let i = 0; i < freqs.length; i++) {
+        h += sin((x / wave) * TWO_PI * freqs[i] + phases[i]) * amps[i];
+      }
+      pts.push({ x, y: b.base - b.amp * (0.5 + 0.5 * (h / norm)) });
+    }
+    endHills.push({ ...b, pts });
+  }
+
+  for (let i = 0; i < 11; i++) {
+    const far = random() < 0.45;
+    endTrees.push({
+      x: FIELD.x + 40 + i * 78 + random(-20, 20),
+      y: far ? 430 + random(-10, 14) : 462 + random(-6, 8),
+      h: far ? random(30, 52) : random(46, 82),
+      w: far ? random(11, 18) : random(17, 27),
+      trunk: far ? C.bark : '#5a4632',
+      leaf: far ? C.hillMid : random() < 0.5 ? C.leaf : C.leafLight,
+      lobes: far ? 3 : 4,
+      ph: random(TWO_PI)
+    });
+  }
+
+  for (let i = 0; i < 46; i++) {
+    endPollen.push({
+      x: random(FIELD.x, FIELD.x + FIELD.w),
+      y: random(FIELD.y + 20, FIELD.y + FIELD.h),
+      s: random(1.2, 3),
+      ph: random(TWO_PI),
+      sp: random(0.1, 0.34)
+    });
+  }
+}
+
+function drawEndingScene() {
+  const ctx = drawingContext;
+  const fx = FIELD.x, fy = FIELD.y, fw = FIELD.w, fh = FIELD.h;
+
+  ctx.save();
+  roundPath(fx, fy, fw, fh, 11);
+  ctx.clip();
+
+  const sky = ctx.createLinearGradient(0, fy, 0, fy + fh);
+  sky.addColorStop(0, C.mint);
+  sky.addColorStop(0.55, C.skyGreen);
+  sky.addColorStop(1, '#dcecc6');
+  ctx.fillStyle = sky;
+  ctx.fillRect(fx, fy, fw, fh);
+
+  const sunX = fx + fw * 0.28;
+  const sunY = fy + fh * 0.26;
+  const glow = ctx.createRadialGradient(sunX, sunY, 6, sunX, sunY, 210);
+  glow.addColorStop(0, 'rgba(255, 252, 224, 0.92)');
+  glow.addColorStop(0.42, 'rgba(240, 248, 206, 0.34)');
+  glow.addColorStop(1, 'rgba(240, 248, 206, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(fx, fy, fw, fh);
+
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, 34, 0, TWO_PI);
+  ctx.fillStyle = 'rgba(255, 253, 236, 0.85)';
+  ctx.fill();
+
+  for (const b of endHills) {
+    ridgePath(ctx, b.pts, 0, fy + fh, b.smooth);
+    ctx.fillStyle = b.col;
+    ctx.fill();
+  }
+
+  for (const t of endTrees) {
+    const sway = sin(gameTime * 0.6 + t.ph) * 1.8;
+    ctx.strokeStyle = t.trunk;
+    ctx.lineWidth = Math.max(2, t.w * 0.17);
+    ctx.beginPath();
+    ctx.moveTo(t.x, t.y);
+    ctx.lineTo(t.x + sway, t.y - t.h * 0.52);
+    ctx.stroke();
+
+    for (let i = 0; i < t.lobes; i++) {
+      const a = -Math.PI / 2 + (i - (t.lobes - 1) / 2) * 0.62;
+      const lx = t.x + sway + cos(a) * t.h * 0.2;
+      const ly = t.y - t.h * 0.58 + sin(a) * t.h * 0.14;
+      ctx.beginPath();
+      ctx.ellipse(lx, ly, t.w * (0.62 - i * 0.05), t.h * 0.2, 0, 0, TWO_PI);
+      ctx.fillStyle = i % 2 ? t.leaf : C.leafLight;
+      ctx.fill();
+    }
+  }
+
+  noStroke();
+  fill(C.grass);
+  rect(fx, 462, fw, fh - (462 - fy));
+  fill(63, 122, 69, 70);
+  rect(fx, 462, fw, 3);
+
+  for (const p of endPollen) {
+    const rise = (gameTime * p.sp * 9) % (fh + 50);
+    const y = fy + fh - rise + 25;
+    const x = p.x + sin(gameTime * 0.5 + p.ph) * 13;
+    const fade = constrain(rise / 80, 0, 1) * constrain((fh + 50 - rise) / 80, 0, 1);
+    fill(255, 255, 236, 150 * fade);
+    circle(x, y, p.s);
+  }
+
+  const vig = ctx.createRadialGradient(
+    fx + fw / 2, fy + fh * 0.5, fh * 0.32,
+    fx + fw / 2, fy + fh * 0.5, fh * 1.05
+  );
+  vig.addColorStop(0, 'rgba(30, 62, 34, 0)');
+  vig.addColorStop(1, 'rgba(30, 62, 34, 0.26)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(fx, fy, fw, fh);
+
+  ctx.restore();
+
+  noFill();
+  stroke(46, 86, 48, 80);
+  strokeWeight(2);
+  roundPath(fx, fy, fw, fh, 11);
+  drawingContext.stroke();
+  noStroke();
+}
+
+function drawEnding() {
+  const d = level.door;
+
+  noStroke();
+  fill(C.paper);
+  rect(0, -view.slackTop, FIELD.w, 76 + view.slackTop);
+  rect(0, 502, FIELD.w, 98);
+
+  fill(C.grass);
+  textSize(22);
+  textStyle(BOLD);
+  textAlign(LEFT, CENTER);
+  text('LARP DEVIL', 40, 29);
+  fill(C.muted);
+  textStyle(NORMAL);
+  textSize(12);
+  text('ALL TWELVE LEVELS CLEARED', 42, 57);
+  textAlign(RIGHT);
+  text(`DEATHS ${deaths}`, FIELD.w - 40, 42);
+  textAlign(LEFT, CENTER);
+
+  drawEndingScene();
+
+  push();
+  translate(d.x + d.w / 2, 462);
+  fill(C.grass);
+  rect(-d.w / 2, -d.h, d.w, d.h, 3);
+  fill('#2c5c31');
+  rect(-d.w / 2 + 5, -d.h + 6, d.w - 10, d.h - 6, 2);
+  fill(C.amber);
+  circle(d.w / 2 - 8, -d.h + 27, 4);
+  pop();
+
+  if (endT < 1.5) drawPlayer();
+
+  const reveal = constrain((endT - 0.7) / 0.7, 0, 1);
+
+  noStroke();
+  fill(255, 255, 255, 190 * reveal);
+  rect(FIELD.x + 150, FIELD.y + 26, FIELD.w - 300, 104, 10);
+  drawingContext.fill();
+
+  fill(31, 74, 36, 255 * reveal);
+  textAlign(CENTER, CENTER);
+  textStyle(BOLD);
+  textSize(38);
+  text('YOU WALKED OUT', W / 2, FIELD.y + 60);
+  textStyle(NORMAL);
+  textSize(13);
+  text('The door was a suggestion. You took it anyway.', W / 2, FIELD.y + 96);
+  textSize(12);
+  fill(74, 112, 70, 255 * reveal);
+  text(
+    `12 LEVELS  \u00b7  ${deaths} DEATH${deaths === 1 ? '' : 'S'}`,
+    W / 2,
+    FIELD.y + 116
+  );
+
+  if (endT > 2.1 && floor(endT * 2) % 2 === 0) {
+    fill(31, 74, 36);
+    textStyle(BOLD);
+    textSize(14);
+    text('PRESS ENTER TO PLAY AGAIN', W / 2, 452);
+    textStyle(NORMAL);
+  }
+
+  buttons = [];
+  uiButton(18, 512, 128, 32, 'PLAY AGAIN  \u23ce', 'accent', () => {
+    state = 'title';
+    titleT = 0;
+  });
+
+  fill(C.white);
+  textAlign(LEFT, CENTER);
+  textSize(11);
+  text('Thanks for playing.', 20, 565);
+  fill('#aaa69b');
+  textAlign(RIGHT);
+  text('R RESTARTS THE CURRENT LEVEL IN-GAME', FIELD.w - 20, 565);
 }
 
 function roundPath(x, y, w, h, r) {
@@ -865,9 +1215,81 @@ function roundPath(x, y, w, h, r) {
   c.closePath();
 }
 
+function loadArtwork() {
+  loadImage('hell.png', img => {
+    bgArt = img;
+    bgCache = null;
+  }, () => {
+    console.warn('[larp-devil] hell.png not found, using procedural backdrop');
+  });
+
+  loadImage('nature.png', img => {
+    endArt = img;
+    endCache = null;
+  }, () => {
+    console.warn('[larp-devil] nature.png not found, using procedural ending');
+  });
+}
+
+function ensureCache(img, cache, w) {
+  if (cache && cache.img === img && cache.w >= w) return cache;
+  const cv = document.createElement('canvas');
+  cv.width = Math.ceil(w);
+  cv.height = Math.ceil(w / (img.width / img.height));
+  const g = cv.getContext('2d');
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(img.elt || img.canvas, 0, 0, cv.width, cv.height);
+  return { img, canvas: cv, w: cv.width, h: cv.height };
+}
+
+function blitArt(ctx, img, cache, fx, fy, fw, fh, driftX, focus, dim) {
+  const c = ensureCache(img, cache, fw * 1.3 + 2);
+  const dw = c.w;
+  const dh = c.h;
+
+  let dx = fx - (dw - fw) / 2 - driftX;
+  const lo = fx + fw - dw;
+  const hi = fx;
+  dx = dx < lo ? lo : dx > hi ? hi : dx;
+
+  const dy = fy + (fh - dh) * focus;
+
+  ctx.drawImage(c.canvas, dx, dy, dw, dh);
+
+  if (dim > 0) {
+    ctx.fillStyle = `rgba(30, 24, 34, ${dim})`;
+    ctx.fillRect(fx, fy, fw, fh);
+  }
+  return c;
+}
+
+function ridgePath(ctx, pts, px, floorY, smooth) {
+  const n = pts.length;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x + px, floorY === null ? pts[0].y : floorY);
+  if (floorY !== null) ctx.lineTo(pts[0].x + px, pts[0].y);
+
+  if (smooth) {
+    for (let i = 1; i < n - 1; i++) {
+      const mx = (pts[i].x + pts[i + 1].x) / 2 + px;
+      const my = (pts[i].y + pts[i + 1].y) / 2;
+      ctx.quadraticCurveTo(pts[i].x + px, pts[i].y, mx, my);
+    }
+  } else {
+    for (let i = 1; i < n; i++) ctx.lineTo(pts[i].x + px, pts[i].y);
+  }
+
+  ctx.lineTo(pts[n - 1].x + px, pts[n - 1].y);
+  if (floorY !== null) {
+    ctx.lineTo(pts[n - 1].x + px, floorY);
+    ctx.closePath();
+  }
+}
+
 function drawBackdrop() {
   const ctx = drawingContext;
-  const worldW = level && level.worldW ? level.worldW : FIELD.w;
+  const worldW = max(level && level.worldW ? level.worldW : 0, FIELD.w);
   const fx = FIELD.x + camX, fy = FIELD.y, fw = FIELD.w, fh = FIELD.h;
   const drift = -(controlled().x - 76);
 
@@ -875,66 +1297,65 @@ function drawBackdrop() {
   roundPath(fx, fy, fw, fh, 11);
   ctx.clip();
 
-  const sky = ctx.createLinearGradient(0, fy, 0, fy + fh);
-  sky.addColorStop(0, C.skyTop);
-  sky.addColorStop(0.58, C.skyLow);
-  sky.addColorStop(1, C.halo);
-  ctx.fillStyle = sky;
-  ctx.fillRect(FIELD.x - 60, fy, worldW + 120, fh);
+  if (bgArt) {
+    bgCache = blitArt(ctx, bgArt, bgCache, fx, fy, fw, fh, -drift * 0.22, 0.5, 0.3);
+  } else {
+    const sky = ctx.createLinearGradient(0, fy, 0, fy + fh);
+    sky.addColorStop(0, C.skyTop);
+    sky.addColorStop(0.58, C.skyLow);
+    sky.addColorStop(1, C.halo);
+    ctx.fillStyle = sky;
+    ctx.fillRect(FIELD.x - 60, fy, worldW + 120, fh);
 
-  const sunX = FIELD.x + worldW * 0.74;
-  const sunY = fy + fh * 0.3;
-  const sun = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 168);
-  sun.addColorStop(0, 'rgba(255, 233, 184, 0.85)');
-  sun.addColorStop(0.45, 'rgba(250, 214, 158, 0.30)');
-  sun.addColorStop(1, 'rgba(250, 214, 158, 0)');
-  ctx.fillStyle = sun;
-  ctx.fillRect(fx, fy, fw, fh);
-
-  const VEIL = [0.36, 0.19, 0.07];
-  for (let i = 0; i < bgBands.length; i++) {
-    const b = bgBands[i];
-    const px = drift * b.depth;
-
-    ctx.beginPath();
-    ctx.moveTo(b.pts[0].x + px, fy + fh);
-    for (const pt of b.pts) ctx.lineTo(pt.x + px, pt.y);
-    ctx.lineTo(b.pts[b.pts.length - 1].x + px, fy + fh);
-    ctx.closePath();
-    ctx.fillStyle = b.col;
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(b.pts[0].x + px, b.pts[0].y);
-    for (const pt of b.pts) ctx.lineTo(pt.x + px, pt.y);
-    ctx.strokeStyle = 'rgba(255, 242, 214, 0.42)';
-    ctx.lineWidth = 1.5;
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-
-    ctx.fillStyle = `rgba(244, 234, 213, ${VEIL[i]})`;
+    const sunX = FIELD.x + worldW * 0.74;
+    const sunY = fy + fh * 0.3;
+    const sun = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 168);
+    sun.addColorStop(0, 'rgba(255, 233, 184, 0.85)');
+    sun.addColorStop(0.45, 'rgba(250, 214, 158, 0.30)');
+    sun.addColorStop(1, 'rgba(250, 214, 158, 0)');
+    ctx.fillStyle = sun;
     ctx.fillRect(fx, fy, fw, fh);
-  }
 
-  for (const h of bgHorns) {
-    const px = drift * h.depth;
-    ctx.beginPath();
-    ctx.moveTo(h.x + px - h.w / 2, h.y);
-    ctx.quadraticCurveTo(
-      h.x + px + h.curve * h.w * 1.5,
-      h.y - h.h * 0.72,
-      h.x + px + h.curve * h.w * 0.55,
-      h.y - h.h
-    );
-    ctx.quadraticCurveTo(
-      h.x + px + h.w * 0.15,
-      h.y - h.h * 0.5,
-      h.x + px + h.w / 2,
-      h.y
-    );
-    ctx.closePath();
-    ctx.fillStyle = h.col;
-    ctx.fill();
+    const VEIL = [0.36, 0.19, 0.07];
+    for (let i = 0; i < bgBands.length; i++) {
+      const b = bgBands[i];
+      const px = drift * b.depth;
+
+      ridgePath(ctx, b.pts, px, fy + fh, b.smooth);
+      ctx.fillStyle = b.col;
+      ctx.fill();
+
+      ridgePath(ctx, b.pts, px, null, b.smooth);
+      ctx.strokeStyle = `rgba(255, 244, 218, ${b.rim})`;
+      ctx.lineWidth = b.smooth ? 1.8 : 1.2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      ctx.fillStyle = `rgba(244, 234, 213, ${VEIL[i]})`;
+      ctx.fillRect(fx, fy, fw, fh);
+    }
+
+    for (const h of bgHorns) {
+      const px = drift * h.depth;
+      ctx.beginPath();
+      ctx.moveTo(h.x + px - h.w / 2, h.y);
+      ctx.quadraticCurveTo(
+        h.x + px + h.curve * h.w * 1.5,
+        h.y - h.h * 0.72,
+        h.x + px + h.curve * h.w * 0.55,
+        h.y - h.h
+      );
+      ctx.quadraticCurveTo(
+        h.x + px + h.w * 0.15,
+        h.y - h.h * 0.5,
+        h.x + px + h.w / 2,
+        h.y
+      );
+      ctx.closePath();
+      ctx.fillStyle = h.col;
+      ctx.fill();
+    }
   }
 
   const fog = ctx.createLinearGradient(0, fy + fh - 112, 0, fy + fh);
@@ -1322,101 +1743,87 @@ function drawPlayer() {
 function drawControls() {
   noStroke();
   fill(C.ink);
-  rect(0, 502, W, 98);
+  rect(0, 502, FIELD.w, 98);
   buttons = [];
 
-  uiButton(
-    18, 512, 109, 32,
-    micState === 'on' ? 'MIC ON' : 'ENABLE MIC',
-    micState === 'on' ? 'on' : 'accent',
-    () => enableMic()
-  );
+  const fw = FIELD.w;
+  const R = 20;
+  const row = (bx, bw, label, style, action) => uiButton(bx, 512, bw, 32, label, style, action);
 
-  NAMES.forEach((name, i) => {
-    uiButton(
-      137 + i * 83, 512, 75, 32,
-      (signatures[i] ? '✓ ' : '') + name,
-      training === i ? 'accent' : signatures[i] ? 'on' : '',
-      () => beginTraining(i)
-    );
-  });
+  const fullW = R + 109 + 10 + 4 * 83 + 10 + 128 + 10 + 75 + 10 + 150 + 12 + 85 + R;
+  const compact = fw < fullW;
 
-  uiButton(
-    480, 512, 128, 32,
-    listening ? 'STOP LISTEN' : 'START LISTEN',
-    listening ? 'accent' : '',
-    () => toggleListening()
-  );
+  row(R, 109, micState === 'on' ? 'MIC ON' : 'ENABLE MIC',
+    micState === 'on' ? 'on' : 'accent', () => enableMic());
 
-  uiButton(617, 512, 75, 32, 'RETRY', '', () => resetLevel());
-  uiButton(
-    701, 512, 28, 32, '−', '',
-    () => moveSeconds = max(0.25, moveSeconds - 0.1)
-  );
-  uiButton(
-    730, 512, 65, 32,
-    `${moveSeconds.toFixed(2)}s`, 'flat', null
-  );
-  uiButton(
-    797, 512, 28, 32, '+', '',
-    () => moveSeconds = min(2, moveSeconds + 0.1)
-  );
-  uiButton(
-    835, 512, 40, 32, '‹', '',
-    () => {
-      levelIndex = (levelIndex + 11) % 12;
-      resetLevel();
-    }
-  );
-  uiButton(
-    877, 512, 40, 32, '›', '',
-    () => {
-      levelIndex = (levelIndex + 1) % 12;
-      resetLevel();
-    }
-  );
+  let x = R + 119;
+
+  if (!compact) {
+    NAMES.forEach((name, i) => {
+      row(x, 75, (signatures[i] ? '✓ ' : '') + name,
+        training === i ? 'accent' : signatures[i] ? 'on' : '', () => beginTraining(i));
+      x += 83;
+    });
+    x += 9;
+  }
+
+  row(x, 128, listening ? 'STOP LISTEN' : 'START LISTEN',
+    listening ? 'accent' : '', () => toggleListening());
+  x += 138;
+
+  row(x, 75, 'RETRY', '', () => resetLevel());
+  x += 84;
+
+  const meterW = max(130, min(300, fw * 0.2));
+  const meterX = x;
+
+  row(meterX + meterW + 8, 28, '\u2212', '', () => moveSeconds = max(0.25, moveSeconds - 0.1));
+  row(meterX + meterW + 40, 65, `${moveSeconds.toFixed(2)}s`, 'flat', null);
+  row(meterX + meterW + 109, 28, '+', '', () => moveSeconds = min(2, moveSeconds + 0.1));
+
+  const navX = max(meterX + meterW + 147, fw - R - 85);
 
   fill(C.white);
   textAlign(LEFT, CENTER);
   textSize(11);
-  text(audioStatus.slice(0, 86), 20, 565);
+  text(audioStatus.slice(0, compact ? 52 : 86), 20, 565);
 
   fill('#aaa69b');
   textAlign(RIGHT);
   text(
     level.doorMode
-      ? '←/→ MOVE DOOR  ·  SHIFT SPRINT  ·  ↑/W/SPACE HOP  ·  R RESTART'
-      : '←/→ MOVE  ·  SHIFT SPRINT  ·  ↑/W/SPACE JUMP  ·  ↓/S STOP  ·  R RESTART',
-    944, 586
+      ? '\u2190/\u2192 MOVE DOOR  \u00b7  SHIFT SPRINT  \u00b7  \u2191/W/SPACE HOP'
+      : '\u2190/\u2192 MOVE  \u00b7  SHIFT SPRINT  \u00b7  \u2191/W/SPACE JUMP  \u00b7  \u2193/S STOP',
+    navX - 12, 586
   );
 
   noStroke();
   fill('#55585b');
-  rect(300, 559, 200, 9, 4.5);
+  rect(meterX, 559, meterW, 9, 4.5);
 
   const st = stamina / STAM_MAX;
   const barCol = exhausted ? C.danger : st < 0.3 ? C.amberDark : C.green;
   fill(barCol);
-  rect(300, 559, max(4, 200 * st), 9, 4.5);
+  rect(meterX, 559, max(4, meterW * st), 9, 4.5);
 
-  if (exhausted) {
-    fill(C.danger);
-    textAlign(LEFT, CENTER);
-    textStyle(BOLD);
-    textSize(10);
-    text('WINDED', 508, 563);
-    textStyle(NORMAL);
-  } else {
-    fill('#aaa69b');
-    textAlign(LEFT, CENTER);
-    textSize(10);
-    text(sprinting ? 'SPRINT' : 'SHIFT TO SPRINT', 508, 563);
-  }
+  fill(exhausted ? C.danger : '#aaa69b');
+  textAlign(RIGHT, CENTER);
+  textStyle(exhausted ? BOLD : NORMAL);
+  textSize(10);
+  text(
+    exhausted ? 'WINDED' : sprinting ? 'SPRINT' : 'SHIFT TO SPRINT',
+    meterX + meterW - 2, 578
+  );
+  textStyle(NORMAL);
 
-  fill('#55585b');
-  rect(858, 559, 81, 5, 3);
-  fill(C.green);
-  rect(858, 559, min(81, noiseFloor * 1400), 5, 3);
+  row(navX, 40, '\u2039', '', () => {
+    levelIndex = (levelIndex + 11) % 12;
+    resetLevel();
+  });
+  row(navX + 45, 40, '\u203a', '', () => {
+    levelIndex = (levelIndex + 1) % 12;
+    resetLevel();
+  });
 }
 
 function uiButton(x, y, w, h, label, style, action) {
@@ -1443,8 +1850,8 @@ function uiButton(x, y, w, h, label, style, action) {
 }
 
 function mousePressed() {
-  const x = mouseX * W / width;
-  const y = mouseY * H / height;
+  const x = mouseX / view.s;
+  const y = (mouseY - view.oy) / view.s;
 
   if (state === 'title') {
     for (let i = 0; i < SKINS.length; i++) {
@@ -1471,47 +1878,59 @@ function clickAt(x, y) {
 
 function touchStarted() {
   if (touches.length) {
-    return clickAt(touches[0].x * W / width, touches[0].y * H / height);
+    return clickAt(touches[0].x / view.s, (touches[0].y - view.oy) / view.s);
   }
   return false;
 }
 
 function keyPressed() {
   if (state === 'title') {
-    if (keyCode === LEFT_ARROW || keyCode === 65) {
+    const k = keyVal();
+    const c = codeVal();
+    const n = codeNum();
+
+    if (c === 'ArrowLeft' || k === 'ArrowLeft' || n === 37 || n === 65) {
       skinIndex = (skinIndex + SKINS.length - 1) % SKINS.length;
       return false;
     }
-    if (keyCode === RIGHT_ARROW || keyCode === 68) {
+    if (c === 'ArrowRight' || k === 'ArrowRight' || n === 39 || n === 68) {
       skinIndex = (skinIndex + 1) % SKINS.length;
       return false;
     }
-    if (keyCode === 13 || keyCode === ENTER || keyCode === 32) {
+    if (n === 13 || n === 32 || k === 'Enter' || k === ' ' || c === 'Space' || c === 'NumpadEnter') {
       startGame();
       return false;
     }
-    if (keyCode === DOWN_ARROW || keyCode === 83) {
+    if (c === 'ArrowDown' || k === 'ArrowDown' || n === 40 || n === 83) {
       startGame();
       return false;
     }
     return true;
   }
 
-  if (key === 'r' || key === 'R') resetLevel();
+  if (state === 'ending') {
+    const n = codeNum();
+    if (n === 13 || n === 32 || keyVal() === 'Enter' || keyVal() === ' ' || codeVal() === 'Space') {
+      state = 'title';
+      titleT = 0;
+      return false;
+    }
+    return true;
+  }
 
-  // Instant halt on Down Arrow or S
-  if (keyCode === DOWN_ARROW || keyCode === 83) {
+  if (keyVal() === 'r' || keyVal() === 'R') resetLevel();
+
+  if (isDownKey()) {
     audioX.until = 0;
   }
 
-  // Prevent browser viewport scrolling when pressing game navigation keys
-  if ([UP_ARROW, DOWN_ARROW, LEFT_ARROW, RIGHT_ARROW, 32].includes(keyCode)) {
+  if (isNavKey()) {
     return false;
   }
 }
 
 function keyReleased() {
-  if ([UP_ARROW, DOWN_ARROW, LEFT_ARROW, RIGHT_ARROW, 32].includes(keyCode)) {
+  if (isNavKey()) {
     return false;
   }
 }
