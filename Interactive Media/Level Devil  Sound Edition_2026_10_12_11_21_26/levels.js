@@ -2,11 +2,11 @@
 // CONSTANTS & LEVEL DEFINITIONS
 // ==========================================
 
-const W = 960, H = 600, FLOOR = H - 116;
+const W = 960, H = 600, FLOOR = H - 82;
 const WORLD_BASE = 876;
 const NAMES = ['DOWN', 'LEFT', 'RIGHT', 'UP'];
 const BINS = 14, SAMPLE_MS = 35;
-const FIELD = { x: 0, y: 76, w: 876, h: H - 174 };
+const FIELD = { x: 0, y: 0, w: 876, h: H };
 const RUN_SPEED = 236.5;
 const DOOR_SPEED = 225.5;
 const GRAVITY = 950;
@@ -73,7 +73,7 @@ function buildLevel(i) {
       title: 'THE WAY BACK',
       hint: 'Climb up, find the switch, then return to the door.',
       worldW: 980,
-      doorX: 16,
+      doorX: 36,
       platforms: [
         ground(40, 280),
         ledge(250, 350, 175),
@@ -82,19 +82,6 @@ function buildLevel(i) {
       ],
       ladders: [ladder(230, 350, FLOOR)],
       exitSwitch: { x: 868, y: 318, w: 28, h: 32 },
-      traps: []
-    },
-    {
-      title: 'TRUST ISSUES',
-      hint: 'The tiles remember when you stand on them.',
-      platforms: [
-        ground(40, 220),
-        ledge(260, FLOOR, 96, 'crumble'),
-        ledge(356, FLOOR, 96, 'crumble'),
-        ledge(452, FLOOR, 96, 'crumble'),
-        ledge(548, FLOOR, 96, 'crumble'),
-        ground(644, 276)
-      ],
       traps: []
     },
     {
@@ -107,6 +94,20 @@ function buildLevel(i) {
       ]
     },
     {
+      title: 'HELL BELOW',
+      hint: 'Climb, then leap from ladder to ladder. Miss and you fall into hell.',
+      platforms: [
+        ground(40, 220),
+        ground(644, 232)
+      ],
+      ladders: [
+        ladder(246, 350, FLOOR),
+        ladder(380, 340, FLOOR - 30),
+        ladder(514, 350, FLOOR)
+      ],
+      traps: []
+    },
+    {
       title: 'A LITTLE GAP',
       hint: 'The ground slips away as you approach.',
       platforms: [
@@ -114,7 +115,10 @@ function buildLevel(i) {
         ledge(358, FLOOR, 148, 'vanish'),
         ground(506, 414)
       ],
-      traps: [trap('vanish', 358, FLOOR, 148, 28, 272)]
+      traps: [
+        trap('vanish', 358, FLOOR, 148, 28, 272),
+        { ...trap('chaseWall', 0, FLOOR, 12, 70.4, 526), stopX: 346 }
+      ]
     },
     {
       title: 'REVERSE PSYCHOLOGY',
@@ -126,15 +130,14 @@ function buildLevel(i) {
       ]
     },
     {
-      title: 'MOVING TARGET',
-      hint: 'Ride the moving platform. The far gate has other plans.',
-      gateReturnX: 76,
+      title: 'BOUNCE HOUSE',
+      hint: 'The spring makes a high jump possible.',
       platforms: [
-        ground(40, 244),
-        ledge(285, 422, 128, 'moving'),
-        ground(690, 230)
+        ground(40, 312),
+        ledge(400, 360, 210),
+        ground(720, 200)
       ],
-      traps: [trap('saw', 588, 407, 64, 64, 0)]
+      traps: [trap('spring', 275, FLOOR - 9, 40, 10, 0)]
     },
     {
       title: 'EXPRESS DELIVERY',
@@ -144,17 +147,25 @@ function buildLevel(i) {
         ledge(305, FLOOR, 370, 'conveyor'),
         ground(675, 245)
       ],
-      traps: [trap('pop', 730, FLOOR, 43, 32, 620)]
+      traps: [
+        trap('pop', 690, FLOOR, 36, 32, 650),
+        { ...trap('chaseWall', 0, FLOOR, 12, 70.4, WORLD_BASE + 1), waitNearSpike: true, sweepDirection: 1, stopX: WORLD_BASE - 12 }
+      ]
     },
     {
-      title: 'BOUNCE HOUSE',
-      hint: 'The spring makes a high jump possible.',
+      title: 'MOVING TARGET',
+      hint: 'Ride the moving platform. The far gate has other plans.',
+      gateReturnX: 76,
+      hiddenLadder: ladder(720, FLOOR - 118, FLOOR - 48),
       platforms: [
-        ground(40, 312),
-        ledge(400, 360, 210),
-        ground(720, 200)
+        ground(40, 244),
+        ledge(285, 422, 128, 'moving'),
+        ground(690, 230)
       ],
-      traps: [trap('spring', 275, FLOOR - 9, 40, 10, 0)]
+      traps: [
+        { ...trap('spring', 230, FLOOR - 9, 42, 10, 0), boostMultiplier: 1.3 },
+        { ...trap('saw', 588, 407, 64, 64, 0), leftTravel: 148, rightTravel: 92 }
+      ]
     },
     {
       title: 'BLINK AND MISS IT',
@@ -229,6 +240,7 @@ function buildLevel(i) {
   );
   if (solids.length) {
     const left = solids.reduce((a, b) => (a.x < b.x ? a : b));
+    left.w += left.x;
     left.x = 0;
   }
 
@@ -236,6 +248,7 @@ function buildLevel(i) {
     ...spec,
     worldW,
     leftBound: 0,
-    door: { x: spec.doorX ?? worldW - 4, y: FLOOR - 48, w: 28, h: 48 }
+    hiddenLadder: spec.hiddenLadder ? { ...spec.hiddenLadder, revealed: false } : null,
+    door: { x: spec.doorX ?? worldW - 32, y: FLOOR - 48, w: 28, h: 48 }
   };
 }

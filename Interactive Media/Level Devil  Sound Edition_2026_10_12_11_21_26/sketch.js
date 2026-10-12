@@ -4,16 +4,22 @@
 
 let buttons = [];
 let levelIndex = 0, level, player, deaths = 0;
+let levelAttempts = Array(12).fill(0);
 let state = 'play', stateTimer = 0, gameTime = 0, lastFrame = 0;
 let tutorialReturnState = 'start';
 let message = 'Reach the green door. Trust nothing.';
-let messageUntil = 0, particles = [], shake = 0;
+let messageUntil = 0, messageShownAt = 0, messageDismissOnMove = false, messagePinned = false;
+let particles = [], shake = 0;
 let lastJump = false, jumpQueuedUntil = 0;
 let walkCycle = 0, stepTimer = 0.5, landImpulse = 0, impactSpeed = 0;
 let doorImpact = 0;
 let winPhase = 0, winT = 0, winOpen = 0, winClose = 0, playerSwallow = 0;
 let skinIndex = 0, titleT = 0;
+const THEMES = ['bare', 'hell', 'nature'];
+let themeIndex = 1, natureUnlocked = false;
+let titleFocus = 'skin';
 let stamina = STAM_MAX, stamDelay = 0, exhausted = false, sprinting = false;
+let sprintCarry = 0, wasSprinting = false, lastSprintDirection = 0, lastSprintExtra = 0;
 let camX = 0;
 
 function skin() {
@@ -36,6 +42,25 @@ function updateStamina(dt, moving, want) {
     if (stamDelay <= 0) stamina = min(STAM_MAX, stamina + STAM_REGEN * dt);
     if (exhausted && stamina >= STAM_RESUME) exhausted = false;
   }
+}
+
+function updateSprintCarry(dt, move, baseSpeed, speedMultiplier = 1) {
+  if (sprinting && move !== 0) {
+    sprintCarry = 0;
+    lastSprintDirection = move;
+    lastSprintExtra = baseSpeed * (SPRINT_MULT - 1) * speedMultiplier;
+    wasSprinting = true;
+    return 0;
+  }
+
+  if (wasSprinting) {
+    sprintCarry = lastSprintDirection * lastSprintExtra;
+    wasSprinting = false;
+  }
+
+  sprintCarry *= exp(-3.2 * dt);
+  if (abs(sprintCarry) < 1) sprintCarry = 0;
+  return sprintCarry;
 }
 
 function updateCamera() {
@@ -76,9 +101,12 @@ function setup() {
   try {
     const saved = Number(localStorage.getItem('larpdevil.skin'));
     if (saved >= 0 && saved < SKINS.length) skinIndex = saved;
+    natureUnlocked = localStorage.getItem('larpdevil.natureUnlocked') === 'true';
+    const savedTheme = THEMES.indexOf(localStorage.getItem('larpdevil.theme'));
+    if (savedTheme >= 0 && (savedTheme !== 2 || natureUnlocked)) themeIndex = savedTheme;
   } catch (e) { /* storage unavailable */ }
 
-  resetLevel();
+  resetLevel(false);
   state = 'title';
 }
 
@@ -173,7 +201,8 @@ function windowResized() {
   if (state === 'ending') buildEndingScene();
 }
 
-function resetLevel() {
+function resetLevel(countAttempt = true) {
+  const attempt = countAttempt ? ++levelAttempts[levelIndex] : levelAttempts[levelIndex];
   level = buildLevel(levelIndex);
   buildBackdrop(max(level.worldW, FIELD.w));
   camX = 0;
@@ -181,6 +210,10 @@ function resetLevel() {
   stamDelay = 0;
   exhausted = false;
   sprinting = false;
+  sprintCarry = 0;
+  wasSprinting = false;
+  lastSprintDirection = 0;
+  lastSprintExtra = 0;
   player = {
     x: 76, y: FLOOR - 32, w: 24, h: 32,
     vx: 0, vy: 0, grounded: true, coyote: 0, face: 1,
@@ -218,8 +251,30 @@ function resetLevel() {
   if (level.gateReturnX !== undefined) {
     level.gateEvent = { phase: 'waiting', timer: 0, closedY: level.door.y };
   }
-  message = level.hint;
-  messageUntil = millis() + 3300;
+  if (isFibonacciAttempt(attempt)) {
+    message = level.hint;
+    messageUntil = millis() + 2800;
+    messageShownAt = millis();
+    messageDismissOnMove = true;
+    messagePinned = false;
+  } else {
+    message = '';
+    messageUntil = 0;
+    messageDismissOnMove = false;
+    messagePinned = false;
+  }
+}
+
+function isFibonacciAttempt(attempt) {
+  if (attempt < 1) return false;
+  let previous = 1;
+  let current = 2;
+  while (current < attempt) {
+    const next = previous + current;
+    previous = current;
+    current = next;
+  }
+  return attempt === 1 || attempt === current;
 }
 
 function draw() {
@@ -346,18 +401,52 @@ const downPressed = keyAny(DOWN_ARROW, 40, 'ArrowDown', 83, 'KeyS', 's');
 const upPressed = keyAny(UP_ARROW, 38, 'ArrowUp', 87, 'KeyW', 'w', 32, ' ', 'Space');
 const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
 
+  if (
+    messageDismissOnMove &&
+    (leftPressed || rightPressed || upPressed || downPressed || now < audioX.until)
+  ) {
+    messageUntil = now;
+    messageDismissOnMove = false;
+  } else if (
+    !messageDismissOnMove &&
+    now < messageUntil &&
+    (leftPressed || rightPressed || upPressed || downPressed || now < audioX.until)
+  ) {
+    messagePinned = true;
+  }
+
   // Down Arrow halts active audio movement timers immediately (like voice 'DOWN')
   if (downPressed && audioX.until > now) {
     audioX.until = 0;
   }
 
-  const ladder = p.ladder || (level.ladders || []).find(l =>
+  const nearbyLadder = (level.ladders || []).find(l =>
     p.x + p.w > l.x - 3 &&
     p.x < l.x + l.w + 3 &&
     p.y + p.h >= l.y - 4 &&
     p.y <= l.y + l.h - p.h + 4
   );
   const climb = (upPressed ? -1 : 0) + (downPressed ? 1 : 0);
+  const hiddenLadder = level.hiddenLadder;
+  const discoverHiddenLadder = Boolean(
+    hiddenLadder &&
+    !hiddenLadder.revealed &&
+    level.gateEvent?.phase === 'returned' &&
+    p.grounded &&
+    upPressed &&
+    p.y + p.h >= FLOOR - 4 &&
+    p.x + p.w > hiddenLadder.x - 18 &&
+    p.x < hiddenLadder.x + hiddenLadder.w + 18
+  );
+  if (discoverHiddenLadder) hiddenLadder.revealed = true;
+  const nearRevealedLadder = hiddenLadder?.revealed &&
+    p.x + p.w > hiddenLadder.x - 3 &&
+    p.x < hiddenLadder.x + hiddenLadder.w + 3 &&
+    p.y + p.h >= hiddenLadder.y - 4 &&
+    p.y <= hiddenLadder.y + hiddenLadder.h - p.h + 60
+    ? hiddenLadder
+    : null;
+  const ladder = p.ladder || nearbyLadder || nearRevealedLadder;
   if (ladder && (p.onLadder || climb !== 0) && !(leftPressed || rightPressed)) {
     p.onLadder = true;
     p.ladder = ladder;
@@ -368,12 +457,12 @@ const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
 
     if (climb !== 0) {
       p.y += climb * 150 * dt;
-      if (p.y <= ladder.y - p.h) {
+      if (climb < 0 && p.y <= ladder.y - p.h) {
         p.y = ladder.y - p.h;
         p.grounded = true;
         p.onLadder = false;
         p.ladder = null;
-      } else if (p.y >= ladder.y + ladder.h - p.h) {
+      } else if (climb > 0 && p.y >= ladder.y + ladder.h - p.h) {
         p.y = ladder.y + ladder.h - p.h;
         p.grounded = true;
         p.onLadder = false;
@@ -383,7 +472,7 @@ const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
 
     lastJump = upPressed;
     updateCamera();
-    updateTraps();
+    updateTraps(dt);
     updateExitSwitch();
     if (state === 'play' && !level.door.locked && overlap(p, level.door)) win();
     return;
@@ -405,7 +494,7 @@ const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
   if (reversed) move *= -1;
 
   // Jump Input: Arrow Up, W, or Space buffers a jump
-  if (upPressed && !lastJump && !ladder) {
+  if (upPressed && !lastJump && (!ladder || leftPressed || rightPressed)) {
     jumpQueuedUntil = now + 155;
   }
   lastJump = upPressed;
@@ -415,7 +504,8 @@ const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
   if (level.doorMode) {
     const d = level.door;
     const spd = sprinting ? DOOR_SPEED * SPRINT_MULT : DOOR_SPEED;
-    d.x = constrain(d.x + move * spd * dt, level.leftBound, level.worldW - 4 - d.w);
+    const carry = updateSprintCarry(dt, move, DOOR_SPEED);
+    d.x = constrain(d.x + (move * spd + carry) * dt, level.leftBound, level.worldW - 4 - d.w);
     if (move !== 0) d.moving = 1;
     else d.moving = max(0, d.moving - dt * 4);
 
@@ -456,17 +546,19 @@ const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
     doorImpact = max(0, doorImpact - dt * 4.6);
 
     updateCamera();
-    updateTraps();
+    updateTraps(dt);
 
     if (state === 'play' && overlap(p, d)) win();
     return;
   }
 
-  const spd = sprinting ? RUN_SPEED * SPRINT_MULT : RUN_SPEED;
+  const reverseMultiplier = reversed ? 1.5 : 1;
+  const spd = (sprinting ? RUN_SPEED * SPRINT_MULT : RUN_SPEED) * reverseMultiplier;
+  const carry = updateSprintCarry(dt, move, RUN_SPEED, reverseMultiplier);
   const drift = p.grounded && move !== 0
     ? (noise(gameTime * 1.7, levelIndex * 13) - 0.5) * DRIFT_AMOUNT
     : 0;
-  p.vx = move * spd + drift;
+  p.vx = move * spd + carry + drift;
   if (move !== 0) p.face = move > 0 ? 1 : -1;
 
   // Jump execution with coyote time
@@ -481,10 +573,7 @@ const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
   // Horizontal movement & collision
   const oldX = p.x;
   const oldY = p.y;
-  const rightBound = level.exitSwitch ||
-    (level.gateReturnX !== undefined && level.gateEvent.phase !== 'waiting')
-    ? level.worldW - p.w
-    : level.door.x - p.w + 10;
+  const rightBound = level.worldW - p.w;
   p.x = constrain(p.x + p.vx * dt, level.leftBound, rightBound);
 
   for (const q of level.platforms) {
@@ -565,7 +654,7 @@ const shiftDown = keyAny(SHIFT, 16, 'ShiftLeft', 'ShiftRight');
   }
 
   updateCamera();
-  updateTraps();
+  updateTraps(dt, { x: oldX, y: oldY });
 
   if (p.y > H + 20) die();
   updateExitSwitch();
@@ -619,7 +708,7 @@ function updateGateRelocation(dt) {
   player.vy = 0;
   player.grounded = true;
   updateCamera();
-  updateTraps();
+  updateTraps(dt);
   if (event.phase !== 'returned') return true;
 
   lastJump = keyAny(UP_ARROW, 38, 'ArrowUp', 87, 'KeyW', 'w', 32, ' ', 'Space');
@@ -643,23 +732,108 @@ function isSolid(q) {
   return true;
 }
 
-function updateTraps() {
+function updateTraps(dt = 0, previousPlayer = null) {
   const victim = controlled();
 
   for (const t of level.traps) {
-    if (!t.active && victim.x + victim.w >= t.trigger) {
+    if (t.waitNearSpike && !t.active) {
+      const spike = level.traps.find(candidate => candidate.type === 'pop');
+      const nearSpike = spike &&
+        victim.x + victim.w >= spike.x - 88 &&
+        victim.x <= spike.x + spike.w + 88 &&
+        victim.y + victim.h >= FLOOR - 4;
+
+      t.nearTimer = nearSpike ? (t.nearTimer || 0) + dt : 0;
+      if (t.nearTimer > 1.5) {
+        t.active = true;
+        t.timer = gameTime;
+        t.x = t.sweepDirection === 1
+          ? max(level.leftBound, victim.x - random(180, 260))
+          : min(victim.x + random(180, 260), level.worldW - t.w - 12);
+        showMessage('WALL INCOMING. MOVE!', 1200);
+      }
+    }
+
+    if (!t.waitNearSpike && !t.active && victim.x + victim.w >= t.trigger) {
       t.active = true;
       t.timer = gameTime - (t.phase || 0);
 
       if (t.type === 'reverse') {
-        showMessage('THE ARROWS HAVE CHANGED THEIR MINDS', 1400);
+        showMessage('REVERSED. 50% FASTER!', 1400);
       }
       if (t.type === 'vanish') {
         showMessage('LOOK DOWN!', 1400);
       }
+      if (t.type === 'chaseWall') {
+        t.x = t.sweepDirection === 1
+          ? max(level.leftBound, victim.x - random(180, 260))
+          : min(victim.x + random(180, 260), level.worldW - t.w - 12);
+        showMessage('WALL INCOMING. JUMP!', 1200);
+      }
     }
 
     const age = gameTime - t.timer;
+
+    if (t.type === 'chaseWall' && t.active && !t.done) {
+      const oldWallX = t.x;
+      const oldValue = t.value || 0;
+      const oldWallTop = t.y - t.h * oldValue;
+      const wasRiding = previousPlayer &&
+        oldValue >= 1 &&
+        abs(previousPlayer.y + player.h - oldWallTop) <= 4 &&
+        previousPlayer.x + player.w > oldWallX &&
+        previousPlayer.x < oldWallX + t.w;
+
+      t.value = min(1, age / 0.3);
+      if (age >= 1.3) {
+        t.x = t.sweepDirection === 1
+          ? min(t.stopX ?? level.worldW - t.w, t.x + RUN_SPEED * 2 * dt)
+          : max(t.stopX ?? 0, t.x - RUN_SPEED * 2 * dt);
+      }
+
+      const wall = {
+        x: t.x,
+        y: t.y - t.h * t.value,
+        w: t.w,
+        h: t.h * t.value
+      };
+      if (previousPlayer && t.value >= 1 && player.vy >= 0 &&
+          previousPlayer.y + player.h <= wall.y + 8 &&
+          player.y + player.h >= wall.y &&
+          player.x + player.w > wall.x && player.x < wall.x + wall.w) {
+        player.y = wall.y - player.h;
+        player.vy = 0;
+        player.grounded = true;
+      } else if (wasRiding && player.vy >= 0) {
+        player.x += t.x - oldWallX;
+        player.y = wall.y - player.h;
+        player.vy = 0;
+        player.grounded = true;
+      } else if (t.value >= 1) {
+        const verticalOverlap =
+          player.y < wall.y + wall.h && player.y + player.h > wall.y;
+        const wasLeft = previousPlayer &&
+          previousPlayer.x + player.w <= oldWallX + 1;
+        const wasRight = previousPlayer &&
+          previousPlayer.x >= oldWallX + t.w - 1;
+        const crossedFromLeft = wasLeft &&
+          wall.x - (player.x + player.w) <= 0;
+        const crossedFromRight = wasRight &&
+          player.x - (wall.x + t.w) <= 0;
+
+        if (verticalOverlap &&
+            (overlap(player, wall) || crossedFromLeft || crossedFromRight)) {
+          if (wasLeft || (!wasRight && player.x + player.w / 2 < wall.x + wall.w / 2)) {
+            player.x = wall.x - player.w;
+            player.vx = min(player.vx, -RUN_SPEED * 2);
+          } else {
+            player.x = wall.x + wall.w;
+            player.vx = max(player.vx, RUN_SPEED * 2);
+          }
+        }
+      }
+      if (t.x + t.w < level.leftBound) t.done = true;
+    }
 
     if (t.type === 'vanish' && t.active && age > 0.42) {
       const q = level.platforms.find(p => p.kind === 'vanish');
@@ -693,7 +867,10 @@ function updateTraps() {
 
     if (t.type === 'saw') {
       const ph = t.phase || 0;
-      t.value = sin((gameTime - ph) * 2.2) * 92;
+      const sweep = sin((gameTime - ph) * 2.2);
+      t.value = sweep < 0
+        ? sweep * (t.leftTravel || 92)
+        : sweep * (t.rightTravel || 92);
       if (circleRect(t.x + t.value + t.w / 2, t.y + t.h / 2, t.w * 0.43, victim)) {
         die();
       }
@@ -705,9 +882,12 @@ function updateTraps() {
 
     if (t.type === 'spring' && !level.doorMode && player.vy >= 0 && overlap(player, { x: t.x, y: t.y - 7, w: t.w, h: 16 })) {
       player.y = t.y - player.h;
-      player.vy = -550;
+      player.vy = t.boostMultiplier
+        ? JUMP_V * t.boostMultiplier
+        : -550;
       player.grounded = false;
       burst(t.x + t.w / 2, t.y, C.green, 8);
+      if (t.boostMultiplier) showMessage('SPRING BOOST!', 900);
     }
 
     if (t.type === 'fake' && overlap(player, t)) {
@@ -817,6 +997,10 @@ function updateWinAnim(dt) {
 
   if (winT >= WIN_HOLD) {
     if (levelIndex === 11) {
+      natureUnlocked = true;
+      try {
+        localStorage.setItem('larpdevil.natureUnlocked', 'true');
+      } catch (e) { /* storage unavailable */ }
       enterEnding();
       return;
     }
@@ -840,7 +1024,7 @@ function enterEnding() {
   player.vx = 0;
   player.vy = 0;
   player.grounded = true;
-  player.y = 462 - player.h;
+  player.y = FLOOR - player.h;
   player.x = d.x - player.w - 2;
   buildEndingScene();
 }
@@ -855,12 +1039,12 @@ function updateEnding(dt) {
     player.face = 1;
     player.vx = RUN_SPEED;
     player.grounded = true;
-    player.y = 462 - player.h;
+    player.y = FLOOR - player.h;
     walkCycle += dt * 13;
     stepTimer -= dt;
     if (stepTimer <= 0) {
       stepTimer = 0.5;
-      dustPuff(player.x, 462, 2, 26, 3, C.grass);
+      dustPuff(player.x, FLOOR, 2, 26, 3, C.grass);
     }
   } else {
     player.vx = 0;
@@ -909,36 +1093,22 @@ function updateParticles(dt) {
 function showMessage(s, duration) {
   message = s;
   messageUntil = millis() + duration;
+  messageShownAt = millis();
+  messageDismissOnMove = false;
+  const body = controlled();
+  messagePinned = abs(body.vx || 0) > 12 || Boolean(body.moving);
 }
 
 function drawScene() {
   background(C.ink);
-  noStroke();
-
-  fill(C.ink);
-  rect(0, -view.slackTop, FIELD.w, 76 + view.slackTop);
-
-  fill(C.amber);
-  textSize(22);
-  textStyle(BOLD);
-  textAlign(LEFT, CENTER);
-  text('LARP DEVIL', 40, 29);
-
-  fill(C.white);
-  textStyle(NORMAL);
-  textSize(12);
-  text(`LEVEL ${String(levelIndex + 1).padStart(2, '0')} / 12     ${level.title}`, 42, 57);
-
-  textAlign(RIGHT);
-  text(`DEATHS ${deaths}`, FIELD.w - 40, 32);
-  textAlign(LEFT);
 
   const fieldContext = drawingContext;
   fieldContext.save();
-  roundPath(0, 76, FIELD.w, 426, 12);
+  fieldContext.beginPath();
+  fieldContext.rect(0, 0, FIELD.w, FIELD.h);
   fieldContext.clip();
   fill(C.sky);
-  rect(0, 76, FIELD.w, 426);
+  rect(0, 0, FIELD.w, FIELD.h);
 
   push();
   translate(
@@ -949,18 +1119,37 @@ function drawScene() {
   pop();
   fieldContext.restore();
 
-  fieldContext.save();
-  roundPath(0, 76, FIELD.w, 426, 12);
-  fieldContext.strokeStyle = 'rgba(37, 39, 44, 0.22)';
-  fieldContext.lineWidth = 1;
-  fieldContext.stroke();
-  fieldContext.restore();
+  noStroke();
+  fill(37, 39, 44, 218);
+  const levelLabel = `LEVEL ${String(levelIndex + 1).padStart(2, '0')} / 12  ${level.title}`;
+  textSize(11);
+  const hudW = max(226, textWidth(levelLabel) + 26);
+  rect(12, 12, hudW, 48, 8);
+
+  fill(C.amber);
+  textSize(17);
+  textStyle(BOLD);
+  textAlign(LEFT, CENTER);
+  text('LARP DEVIL', 23, 28);
+  fill(C.white);
+  textStyle(NORMAL);
+  textSize(11);
+  text(levelLabel, 23, 48);
+
+  const deathsLabel = `DEATHS ${deaths}`;
+  const deathsW = textWidth(deathsLabel) + 28;
+  fill(37, 39, 44, 218);
+  rect(FIELD.w - deathsW - 12, 12, deathsW, 38, 8);
+  fill(C.white);
+  textAlign(CENTER, CENTER);
+  text(deathsLabel, FIELD.w - deathsW / 2 - 12, 31);
+  textAlign(LEFT, CENTER);
 
   drawControls();
 
   if (state === 'dead' || (state === 'won' && winPhase === 3 && winT >= WIN_HOLD * 0.45)) {
     fill(37, 39, 44, 185);
-    rect(0, 137, FIELD.w, 357);
+    rect(0, FIELD.y, FIELD.w, FIELD.h);
 
     fill(C.white);
     textStyle(BOLD);
@@ -986,10 +1175,35 @@ function swatchRect(i) {
   const total = SKINS.length * w + (SKINS.length - 1) * gap;
   return {
     x: FIELD.x + (FIELD.w - total) / 2 + i * (w + gap),
-    y: 300,
+    y: 190,
     w,
     h: 108
   };
+}
+
+function themeRect(i) {
+  const w = 164, h = 54, gap = 12;
+  const total = THEMES.length * w + (THEMES.length - 1) * gap;
+  return {
+    x: FIELD.x + (FIELD.w - total) / 2 + i * (w + gap),
+    y: 348,
+    w,
+    h
+  };
+}
+
+function selectTheme(i) {
+  if (i < 0 || i >= THEMES.length || (i === 2 && !natureUnlocked)) return;
+  themeIndex = i;
+  try {
+    localStorage.setItem('larpdevil.theme', THEMES[i]);
+  } catch (e) { /* storage unavailable */ }
+}
+
+function cycleTheme(direction) {
+  const available = natureUnlocked ? THEMES.length : THEMES.length - 1;
+  themeIndex = (themeIndex + direction + available) % available;
+  selectTheme(themeIndex);
 }
 
 function drawMiniPlayer(cx, baseY, s, sk) {
@@ -1011,51 +1225,39 @@ function drawMiniPlayer(cx, baseY, s, sk) {
 function startGame() {
   try {
     localStorage.setItem('larpdevil.skin', String(skinIndex));
+    localStorage.setItem('larpdevil.theme', THEMES[themeIndex]);
   } catch (e) { /* storage unavailable */ }
   levelIndex = 0;
+  levelAttempts.fill(0);
   resetLevel();
 }
 
 function drawTitle() {
-  const fx = FIELD.x, fw = FIELD.w;
-
   background(C.ink);
   drawBackdrop();
 
   buttons = [];
 
+  const center = FIELD.w / 2;
   noStroke();
-  fill(C.ink);
-  rect(0, -view.slackTop, FIELD.w, 76 + view.slackTop);
-  rect(0, 502, FIELD.w, 98);
+  fill(37, 39, 44, 218);
+  rect(center - 345, 48, 690, 500, 16);
 
-  fill(C.amber);
-  textSize(22);
-  textStyle(BOLD);
-  textAlign(LEFT, CENTER);
-  text('LARP DEVIL', 40, 29);
-  fill(C.white);
-  textStyle(NORMAL);
-  textSize(12);
-  text('SOUND EDITION', 42, 57);
-  textAlign(RIGHT);
-  text('12 LEVELS  ·  1 OF THEM LIES', FIELD.w - 40, 42);
-  textAlign(LEFT, CENTER);
-
+  noStroke();
   textAlign(CENTER, CENTER);
-  fill(C.ink);
+  fill(C.white);
   textStyle(BOLD);
-  textSize(46);
-  text('LARP DEVIL', W / 2, 212);
+  textSize(42);
+  text('LARP DEVIL', center, 91);
 
   textStyle(NORMAL);
   textSize(13);
-  fill(C.ink);
-  text('The exit is a suggestion. Reach the green door anyway.', W / 2, 250);
+  fill(C.white);
+  text('The exit is a suggestion. Reach the green door anyway.', center, 126);
 
   textSize(11);
-  fill(C.muted);
-  text('CHOOSE YOUR SKIN', W / 2, 280);
+  fill('#d0c8b7');
+  text('CHOOSE YOUR SKIN', center, 158);
 
   SKINS.forEach((sk, i) => {
     const r = swatchRect(i);
@@ -1076,35 +1278,80 @@ function drawTitle() {
     rect(r.x, r.y, r.w, r.h, 8);
     noStroke();
 
-    drawMiniPlayer(r.x + r.w / 2, r.y + 68, 1.05, sk);
+    drawMiniPlayer(r.x + r.w / 2, r.y + 62, 1.05, sk);
 
     fill(sel ? C.white : C.ink);
     textStyle(sel ? BOLD : NORMAL);
     textSize(10);
     textAlign(CENTER, CENTER);
-    text(sk.name, r.x + r.w / 2, r.y + 86);
+    text(sk.name, r.x + r.w / 2, r.y + 80);
 
-    if (sel) {
+    if (sel && titleFocus === 'skin') {
       fill(C.amber);
       textSize(13);
       text('▾', r.x + r.w / 2, r.y - 12);
     }
   });
 
-  const blink = floor(titleT * 2) % 2 === 0;
-  if (blink) {
-    fill(C.ink);
-    textStyle(BOLD);
-    textSize(13);
-    text('PRESS ENTER OR CLICK TO BEGIN', W / 2, 445);
+  fill('#d0c8b7');
+  textSize(11);
+  text('CHOOSE YOUR THEME', center, 322);
+
+  THEMES.forEach((name, i) => {
+    const r = themeRect(i);
+    const selected = i === themeIndex;
+    const locked = i === 2 && !natureUnlocked;
+
+    noStroke();
+    if (selected) fill(C.ink);
+    else if (locked) fill('#353239');
+    else fill(255, 251, 239, 150);
+    rect(r.x, r.y, r.w, r.h, 8);
+
+    noFill();
+    stroke(selected ? C.amber : locked ? '#625c64' : C.line);
+    strokeWeight(selected ? 2 : 1);
+    rect(r.x, r.y, r.w, r.h, 8);
+    noStroke();
+
+    const preview = i === 0 ? '#d5c4a4' : i === 1 ? '#a74e58' : '#79b268';
+    fill(locked ? '#76756f' : preview);
+    rect(r.x + 12, r.y + 12, 28, 28, 5);
+    fill(selected ? C.white : locked ? '#d0c8b7' : C.ink);
+    textStyle(selected ? BOLD : NORMAL);
+    textAlign(LEFT, CENTER);
+    textSize(11);
+    text(name.toUpperCase(), r.x + 50, r.y + 20);
+    textSize(9);
+    fill(locked ? '#c0b8a8' : selected ? C.amber : C.muted);
+    text(locked ? 'FINISH LEVEL 12' : selected ? 'SELECTED' : 'SELECT', r.x + 50, r.y + 37);
     textStyle(NORMAL);
+
+    if (selected) {
+      fill(C.amber);
+      textAlign(RIGHT, CENTER);
+      textSize(14);
+      text('✓', r.x + r.w - 12, r.y + r.h / 2);
+      if (titleFocus === 'theme') {
+        textAlign(CENTER, CENTER);
+        textSize(13);
+        text('▾', r.x + r.w / 2, r.y - 12);
+      }
+    }
+  });
+
+  uiButton(center - 72, 438, 144, 36, 'BEGIN  ⏎', 'accent', beginTutorial);
+  if (titleFocus === 'begin') {
+    noFill();
+    stroke(C.white);
+    strokeWeight(2);
+    rect(center - 76, 434, 152, 44, 7);
+    noStroke();
   }
-
-  uiButton(FIELD.w / 2 - 72, 512, 144, 36, 'BEGIN  ⏎', 'accent', beginTutorial);
-
-  fill('#aaa69b');
+  fill('#d0c8b7');
   textAlign(CENTER, CENTER);
-  text('← / → CHANGE SKIN     ENTER TO BEGIN', FIELD.w / 2, 565);
+  textSize(10);
+  text('↑ / ↓ MOVE   ← / → SELECT   ENTER BEGIN', center, 497);
 }
 
 function beginTutorial() {
@@ -1114,6 +1361,10 @@ function beginTutorial() {
 
 function drawTutorial() {
   background(C.ink);
+  drawBackdrop();
+  noStroke();
+  fill(37, 39, 44, 115);
+  rect(0, 0, width, height);
   buttons = [];
 
   const cardW = min(760, width - 32);
@@ -1306,9 +1557,9 @@ function buildEndingScene() {
   endPollen = [];
 
   const bands = [
-    { base: 404, amp: 40, col: C.hillFar, smooth: true, step: 28, waves: [[1.1, 1], [2.7, 0.4]] },
-    { base: 440, amp: 28, col: C.hillMid, smooth: true, step: 24, waves: [[0.9, 1], [2.2, 0.36]] },
-    { base: 470, amp: 16, col: C.hillNear, smooth: true, step: 20, waves: [[0.7, 1]] }
+    { base: 450, amp: 40, col: C.hillFar, smooth: true, step: 28, waves: [[1.1, 1], [2.7, 0.4]] },
+    { base: 482, amp: 28, col: C.hillMid, smooth: true, step: 24, waves: [[0.9, 1], [2.2, 0.36]] },
+    { base: FLOOR, amp: 16, col: C.hillNear, smooth: true, step: 20, waves: [[0.7, 1]] }
   ];
 
   for (const b of bands) {
@@ -1332,7 +1583,7 @@ function buildEndingScene() {
     const far = random() < 0.45;
     endTrees.push({
       x: FIELD.x + 40 + i * 78 + random(-20, 20),
-      y: far ? 430 + random(-10, 14) : 462 + random(-6, 8),
+      y: far ? 468 + random(-10, 14) : FLOOR - 4 + random(-6, 8),
       h: far ? random(30, 52) : random(46, 82),
       w: far ? random(11, 18) : random(17, 27),
       trunk: far ? C.bark : '#5a4632',
@@ -1361,6 +1612,7 @@ function drawEndingScene() {
   roundPath(fx, fy, fw, fh, 11);
   ctx.clip();
 
+  if (!endArt) {
   const sky = ctx.createLinearGradient(0, fy, 0, fy + fh);
   sky.addColorStop(0, C.mint);
   sky.addColorStop(0.55, C.skyGreen);
@@ -1410,9 +1662,9 @@ function drawEndingScene() {
 
   noStroke();
   fill(C.grass);
-  rect(fx, 462, fw, fh - (462 - fy));
+  rect(fx, FLOOR, fw, fh - (FLOOR - fy));
   fill(63, 122, 69, 70);
-  rect(fx, 462, fw, 3);
+  rect(fx, FLOOR, fw, 3);
 
   for (const p of endPollen) {
     const rise = (gameTime * p.sp * 9) % (fh + 50);
@@ -1431,6 +1683,9 @@ function drawEndingScene() {
   vig.addColorStop(1, 'rgba(30, 62, 34, 0.26)');
   ctx.fillStyle = vig;
   ctx.fillRect(fx, fy, fw, fh);
+  } else {
+    endCache = blitArt(ctx, endArt, endCache, fx, fy, fw, fh, 0, 0.54, 0.08);
+  }
 
   ctx.restore();
 
@@ -1444,29 +1699,33 @@ function drawEndingScene() {
 
 function drawEnding() {
   const d = level.door;
-
-  noStroke();
-  fill(C.paper);
-  rect(0, -view.slackTop, FIELD.w, 76 + view.slackTop);
-  rect(0, 502, FIELD.w, 98);
-
-  fill(C.grass);
-  textSize(22);
-  textStyle(BOLD);
-  textAlign(LEFT, CENTER);
-  text('LARP DEVIL', 40, 29);
-  fill(C.muted);
-  textStyle(NORMAL);
-  textSize(12);
-  text('ALL TWELVE LEVELS CLEARED', 42, 57);
-  textAlign(RIGHT);
-  text(`DEATHS ${deaths}`, FIELD.w - 40, 42);
-  textAlign(LEFT, CENTER);
+  background(C.ink);
 
   drawEndingScene();
 
+  noStroke();
+  fill(255, 251, 239, 220);
+  rect(12, 12, 244, 48, 8);
+  fill(C.grass);
+  textSize(17);
+  textStyle(BOLD);
+  textAlign(LEFT, CENTER);
+  text('LARP DEVIL', 23, 28);
+  fill(C.muted);
+  textStyle(NORMAL);
+  textSize(11);
+  text('ALL TWELVE LEVELS CLEARED', 23, 48);
+  const deathsLabel = `DEATHS ${deaths}`;
+  const deathsW = textWidth(deathsLabel) + 28;
+  fill(255, 251, 239, 220);
+  rect(FIELD.w - deathsW - 12, 12, deathsW, 38, 8);
+  fill(C.grass);
+  textAlign(CENTER, CENTER);
+  text(deathsLabel, FIELD.w - deathsW / 2 - 12, 31);
+  textAlign(LEFT, CENTER);
+
   push();
-  translate(d.x + d.w / 2, 462);
+  translate(d.x + d.w / 2, FLOOR);
   fill(C.grass);
   rect(-d.w / 2, -d.h, d.w, d.h, 3);
   fill('#2c5c31');
@@ -1481,46 +1740,39 @@ function drawEnding() {
 
   noStroke();
   fill(255, 255, 255, 190 * reveal);
-  rect(FIELD.x + 150, FIELD.y + 26, FIELD.w - 300, 104, 10);
+  rect(FIELD.x + 150, FIELD.y + 70, FIELD.w - 300, 104, 10);
   drawingContext.fill();
 
   fill(31, 74, 36, 255 * reveal);
   textAlign(CENTER, CENTER);
   textStyle(BOLD);
   textSize(38);
-  text('YOU WALKED OUT', W / 2, FIELD.y + 60);
+  text('YOU WALKED OUT', FIELD.w / 2, FIELD.y + 104);
   textStyle(NORMAL);
   textSize(13);
-  text('The door was a suggestion. You took it anyway.', W / 2, FIELD.y + 96);
+  text('The door was a suggestion. You took it anyway.', FIELD.w / 2, FIELD.y + 140);
   textSize(12);
   fill(74, 112, 70, 255 * reveal);
   text(
     `12 LEVELS  \u00b7  ${deaths} DEATH${deaths === 1 ? '' : 'S'}`,
-    W / 2,
-    FIELD.y + 116
+    FIELD.w / 2,
+    FIELD.y + 160
   );
 
   if (endT > 2.1 && floor(endT * 2) % 2 === 0) {
     fill(31, 74, 36);
     textStyle(BOLD);
     textSize(14);
-    text('PRESS ENTER TO PLAY AGAIN', W / 2, 452);
+    text('PRESS ENTER TO PLAY AGAIN', FIELD.w / 2, H - 90);
     textStyle(NORMAL);
   }
 
   buttons = [];
-  uiButton(18, 512, 128, 32, 'PLAY AGAIN  \u23ce', 'accent', () => {
+  uiButton(18, H - 52, 128, 34, 'PLAY AGAIN  \u23ce', 'accent', () => {
     state = 'title';
     titleT = 0;
   });
 
-  fill(C.white);
-  textAlign(LEFT, CENTER);
-  textSize(11);
-  text('Thanks for playing.', 20, 565);
-  fill('#aaa69b');
-  textAlign(RIGHT);
-  text('R RESTARTS THE CURRENT LEVEL IN-GAME', FIELD.w - 20, 565);
 }
 
 function roundPath(x, y, w, h, r) {
@@ -1616,8 +1868,20 @@ function drawBackdrop() {
   roundPath(fx, fy, fw, fh, 11);
   ctx.clip();
 
-  if (bgArt) {
-    bgCache = blitArt(ctx, bgArt, bgCache, fx, fy, fw, fh, -drift * 0.22, 0.5, 0.3);
+  const art = themeIndex === 1 ? bgArt : themeIndex === 2 ? endArt : null;
+  if (art) {
+    bgCache = blitArt(
+      ctx,
+      art,
+      bgCache,
+      fx,
+      fy,
+      fw,
+      fh,
+      -drift * 0.22,
+      themeIndex === 2 ? 0.54 : 0.5,
+      themeIndex === 2 ? 0.08 : 0.3
+    );
   } else {
     const sky = ctx.createLinearGradient(0, fy, 0, fy + fh);
     sky.addColorStop(0, C.skyTop);
@@ -1677,14 +1941,16 @@ function drawBackdrop() {
     }
   }
 
-  const fog = ctx.createLinearGradient(0, fy + fh - 112, 0, fy + fh);
-  fog.addColorStop(0, 'rgba(248, 222, 170, 0)');
-  fog.addColorStop(1, 'rgba(248, 222, 170, 0.38)');
-  ctx.fillStyle = fog;
-  ctx.fillRect(fx, fy + fh - 112, fw, 112);
+  if (themeIndex !== 2) {
+    const fog = ctx.createLinearGradient(0, fy + fh - 112, 0, fy + fh);
+    fog.addColorStop(0, 'rgba(248, 222, 170, 0)');
+    fog.addColorStop(1, 'rgba(248, 222, 170, 0.38)');
+    ctx.fillStyle = fog;
+    ctx.fillRect(fx, fy + fh - 112, fw, 112);
+  }
 
   const t = gameTime;
-  for (const e of bgEmbers) {
+  for (const e of themeIndex !== 2 ? bgEmbers : []) {
     const px = drift * e.depth;
     const rise = (t * e.sp * 11) % (fh + 60);
     const y = fy + fh - rise + 30;
@@ -1696,7 +1962,7 @@ function drawBackdrop() {
     circle(x, y, e.s);
   }
 
-  for (const m of bgMotes) {
+  for (const m of themeIndex !== 2 ? bgMotes : []) {
     const px = drift * m.depth;
     const rise = (t * m.sp * 13) % (fh + 40);
     const y = fy + fh - rise + 20;
@@ -1727,24 +1993,6 @@ function drawBackdrop() {
 
 function drawWorld() {
   drawBackdrop();
-
-  const hint = millis() < messageUntil
-    ? message
-    : level.doorMode
-      ? 'CONTROLS: The DOOR is yours. ←/→ or A/D to steer, ↑/W/SPACE to hop'
-      : level.ladders && level.ladders.length
-        ? 'UP / W TO CLIMB. DOWN / S TO DESCEND. Find the switch, then return.'
-      : 'CONTROLS: Use sounds OR Arrow Keys / WASD (↑ to jump, ↓ to stop)';
-
-  textSize(12);
-  noStroke();
-  fill(37, 39, 44, 46);
-  roundPath(FIELD.x + 12, FIELD.y + 8, textWidth(hint) + 30, 24, 12);
-  drawingContext.fill();
-
-  fill(C.ink);
-  textAlign(LEFT, CENTER);
-  text(hint, FIELD.x + 27, FIELD.y + 21);
 
   for (const q of level.platforms) {
     if (!isSolid(q)) {
@@ -1796,17 +2044,9 @@ function drawWorld() {
   }
 
   for (const ladder of level.ladders || []) {
-    stroke('#69505a');
-    strokeWeight(5);
-    line(ladder.x + 4, ladder.y + 2, ladder.x + 4, ladder.y + ladder.h);
-    line(ladder.x + ladder.w - 4, ladder.y + 2, ladder.x + ladder.w - 4, ladder.y + ladder.h);
-    stroke('#d29a86');
-    strokeWeight(3);
-    for (let y = ladder.y + 8; y < ladder.y + ladder.h; y += 16) {
-      line(ladder.x + 4, y, ladder.x + ladder.w - 4, y);
-    }
-    noStroke();
+    drawLadder(ladder);
   }
+  if (level.hiddenLadder?.revealed) drawLadder(level.hiddenLadder);
 
   if (level.exitSwitch) {
     const s = level.exitSwitch;
@@ -1891,11 +2131,114 @@ function drawWorld() {
 
   for (const t of level.traps) drawTrap(t);
   drawPlayer();
+  if (state === 'play' && millis() < messageUntil) {
+    drawCharacterMessage(message, messagePinned);
+  }
 
   for (const p of particles) {
     fill(p.color);
     rect(p.x, p.y, p.s, p.s);
   }
+}
+
+function drawCharacterMessage(content, pinned = false) {
+  const p = player;
+  const fontSize = 9;
+  const lineHeight = 12;
+  const paddingX = 8;
+  const paddingY = 7;
+  const maxWidth = min(240, FIELD.w - 32);
+  const innerWidth = maxWidth - paddingX * 2;
+  const lines = [];
+
+  textFont('monospace');
+  textSize(fontSize);
+  textStyle(BOLD);
+  for (const paragraph of content.split('\n')) {
+    let line = '';
+    for (const word of paragraph.split(/\s+/)) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (line && textWidth(candidate) > innerWidth) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    }
+    if (line) lines.push(line);
+  }
+
+  const boxW = min(maxWidth, max(112, max(lines.map(line => textWidth(line))) + paddingX * 2));
+  const boxH = lines.length * lineHeight + paddingY * 2;
+  const above = !pinned && p.y > boxH + 36;
+  const targetX = pinned ? camX + FIELD.w / 2 : p.x + p.w / 2;
+  const targetY = pinned ? FIELD.y + 68 : above ? p.y : p.y + p.h;
+  const boxX = pinned
+    ? camX + (FIELD.w - boxW) / 2
+    : constrain(targetX - boxW / 2, camX + 12, camX + FIELD.w - boxW - 12);
+  const boxY = pinned
+    ? targetY
+    : above
+      ? max(10, targetY - boxH - 20)
+      : min(FIELD.h - boxH - 10, targetY + 20);
+  const anchorX = constrain(targetX, boxX + 14, boxX + boxW - 14);
+  const edgeY = above ? boxY + boxH : boxY;
+  const tailDirection = above ? 1 : -1;
+  const popProgress = constrain((millis() - messageShownAt) / 130, 0, 1);
+  const popScale = 0.84 + 0.16 * (1 - sq(1 - popProgress));
+  const fade = constrain((messageUntil - millis()) / 180, 0, 1) * (pinned ? 0.58 : 0.72);
+
+  drawingContext.save();
+  drawingContext.globalAlpha *= fade;
+  push();
+  translate(targetX, targetY);
+  scale(popScale);
+  noStroke();
+
+  if (!pinned) {
+    for (let i = 0; i < 7; i++) {
+      const width = max(3, 10 - i);
+      const y = edgeY + tailDirection * (i * 3) - targetY;
+      fill(C.ink);
+      rect(anchorX - targetX - width / 2, y, width, 4);
+      fill('#f4e8c7');
+      rect(anchorX - targetX - max(1, width - 2) / 2, y + 1, max(1, width - 2), 2);
+    }
+  }
+
+  const x = boxX - targetX;
+  const y = boxY - targetY;
+  fill('#493a4c');
+  rect(x + 3, y + 3, boxW, boxH);
+  rect(x, y, boxW, boxH);
+  fill('#f4e8c7');
+  rect(x + 3, y + 3, boxW - 6, boxH - 6);
+  fill('#bd818d');
+  rect(x + 3, y + 3, boxW - 6, 2);
+
+  fill(C.ink);
+  textSize(fontSize);
+  textAlign(LEFT, TOP);
+  textStyle(BOLD);
+  lines.forEach((line, index) => {
+    text(line, x + paddingX, y + paddingY + index * lineHeight);
+  });
+  textStyle(NORMAL);
+  pop();
+  drawingContext.restore();
+}
+
+function drawLadder(ladder) {
+  stroke('#69505a');
+  strokeWeight(5);
+  line(ladder.x + 4, ladder.y + 2, ladder.x + 4, ladder.y + ladder.h);
+  line(ladder.x + ladder.w - 4, ladder.y + 2, ladder.x + ladder.w - 4, ladder.y + ladder.h);
+  stroke('#d29a86');
+  strokeWeight(3);
+  for (let y = ladder.y + 8; y < ladder.y + ladder.h; y += 16) {
+    line(ladder.x + 4, y, ladder.x + ladder.w - 4, y);
+  }
+  noStroke();
 }
 
 function drawTrap(t) {
@@ -1910,9 +2253,6 @@ function drawTrap(t) {
           t.x + (i + 1) * t.w / count, t.y
         );
       }
-    } else {
-      fill(C.amberDark);
-      rect(t.x, t.y - 3, t.w, 3);
     }
   } else if (t.type === 'fall') {
     if (t.active && gameTime - t.timer < 0.47) {
@@ -1986,7 +2326,7 @@ function drawTrap(t) {
       fill(C.amberDark);
       textSize(13);
       textAlign(CENTER, CENTER);
-      text('⇄  REVERSED  ⇄', t.x + t.w / 2, t.y - 12);
+      text('⇄  REVERSED +50% SPEED  ⇄', t.x + t.w / 2, t.y - 12);
     }
   } else if (t.type === 'fake') {
     fill(C.green);
@@ -1995,6 +2335,12 @@ function drawTrap(t) {
     rect(t.x + 5, t.y + 6, t.w - 10, t.h - 6, 2);
     fill(C.amber);
     circle(t.x + t.w - 8, t.y + 27, 4);
+  } else if (t.type === 'chaseWall' && t.active && !t.done && t.value > 0) {
+    const wallY = t.y - t.h * t.value;
+    fill('#493a4c');
+    rect(t.x, wallY, t.w, t.h * t.value, 3);
+    fill('#bd818d');
+    rect(t.x, wallY + 2, t.w, 3);
   }
 }
 
@@ -2098,16 +2444,15 @@ function drawPlayer() {
 
 function drawControls() {
   noStroke();
-  fill(C.ink);
-  rect(0, 502, FIELD.w, 98);
   buttons = [];
 
   const fw = FIELD.w;
-  const R = 20;
-  const row = (bx, bw, label, style, action) => uiButton(bx, 512, bw, 32, label, style, action);
-  const navX = fw - R - 85;
-  const meterW = max(145, min(250, fw * 0.25));
-  const meterX = max(R + 207, navX - meterW - 28);
+  const R = 16;
+  const buttonY = H - 50;
+  const row = (bx, bw, label, style, action) => uiButton(bx, buttonY, bw, 34, label, style, action);
+  const navX = fw - R - 80;
+  const meterW = min(210, fw - 240);
+  const meterX = (fw - meterW) / 2;
 
   row(R, 112, 'VOICE SETUP', listening ? 'on' : '', () => {
     tutorialReturnState = 'play';
@@ -2119,36 +2464,25 @@ function drawControls() {
   fill(C.white);
   textAlign(LEFT, CENTER);
   textSize(11);
-  text(listening ? 'Voice control is on.' : 'Arrow keys are ready.', 20, 565);
-
-  fill('#aaa69b');
-  textAlign(LEFT);
-  textSize(10);
-  text(
-    level.doorMode
-      ? '\u2190/\u2192 MOVE DOOR  \u00b7  SHIFT SPRINT  \u00b7  \u2191/W/SPACE HOP'
-      : level.ladders && level.ladders.length
-        ? '\u2190/\u2192 MOVE  \u00b7  \u2191/W CLIMB  \u00b7  SPACE JUMP'
-        : '\u2190/\u2192 MOVE  \u00b7  SHIFT SPRINT  \u00b7  \u2191/W/SPACE JUMP',
-    20, 586
-  );
 
   noStroke();
+  fill(37, 39, 44, 190);
+  rect(meterX - 8, H - 50, meterW + 16, 34, 8);
   fill('#55585b');
-  rect(meterX, 559, meterW, 9, 4.5);
+  rect(meterX, H - 37, meterW, 7, 3.5);
 
   const st = stamina / STAM_MAX;
   const barCol = exhausted ? C.danger : st < 0.3 ? C.amberDark : C.green;
   fill(barCol);
-  rect(meterX, 559, max(4, meterW * st), 9, 4.5);
+  rect(meterX, H - 37, max(4, meterW * st), 7, 3.5);
 
-  fill(exhausted ? C.danger : '#aaa69b');
-  textAlign(RIGHT, CENTER);
+  fill(exhausted ? C.danger : C.white);
+  textAlign(CENTER, CENTER);
   textStyle(exhausted ? BOLD : NORMAL);
-  textSize(10);
+  textSize(9);
   text(
-    exhausted ? 'WINDED' : sprinting ? 'SPRINT' : 'SHIFT TO SPRINT',
-    meterX + meterW - 2, 578
+    exhausted ? 'WINDED' : sprinting ? 'SPRINT' : 'SHIFT',
+    meterX + meterW / 2, H - 44
   );
   textStyle(NORMAL);
 
@@ -2198,6 +2532,15 @@ function mousePressed() {
       const r = swatchRect(i);
       if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
         skinIndex = i;
+        titleFocus = 'skin';
+        return false;
+      }
+    }
+    for (let i = 0; i < THEMES.length; i++) {
+      const r = themeRect(i);
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+        selectTheme(i);
+        titleFocus = 'theme';
         return false;
       }
     }
@@ -2221,7 +2564,27 @@ function touchStarted() {
     if (state === 'tutorialControls' || state === 'tutorialAudio') {
       return clickAt(touches[0].x, touches[0].y);
     }
-    return clickAt(touches[0].x / view.s, (touches[0].y - view.oy) / view.s);
+    const x = touches[0].x / view.s;
+    const y = (touches[0].y - view.oy) / view.s;
+    if (state === 'title') {
+      for (let i = 0; i < SKINS.length; i++) {
+        const r = swatchRect(i);
+        if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+          skinIndex = i;
+          titleFocus = 'skin';
+          return false;
+        }
+      }
+      for (let i = 0; i < THEMES.length; i++) {
+        const r = themeRect(i);
+        if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
+          selectTheme(i);
+          titleFocus = 'theme';
+          return false;
+        }
+      }
+    }
+    return clickAt(x, y);
   }
   return false;
 }
@@ -2232,19 +2595,29 @@ function keyPressed() {
     const c = codeVal();
     const n = codeNum();
 
-    if (c === 'ArrowLeft' || k === 'ArrowLeft' || n === 37 || n === 65) {
-      skinIndex = (skinIndex + SKINS.length - 1) % SKINS.length;
+    if (c === 'ArrowDown' || k === 'ArrowDown' || n === 40) {
+      titleFocus = titleFocus === 'skin' ? 'theme' : 'begin';
       return false;
     }
-    if (c === 'ArrowRight' || k === 'ArrowRight' || n === 39 || n === 68) {
-      skinIndex = (skinIndex + 1) % SKINS.length;
+    if (c === 'ArrowUp' || k === 'ArrowUp' || n === 38) {
+      titleFocus = titleFocus === 'begin' ? 'theme' : 'skin';
       return false;
     }
+
+    const direction =
+      c === 'ArrowLeft' || k === 'ArrowLeft' || n === 37 || n === 65 ? -1 :
+      c === 'ArrowRight' || k === 'ArrowRight' || n === 39 || n === 68 ? 1 :
+      0;
+    if (direction !== 0) {
+      if (titleFocus === 'skin') {
+        skinIndex = (skinIndex + direction + SKINS.length) % SKINS.length;
+      } else if (titleFocus === 'theme') {
+        cycleTheme(direction);
+      }
+      return false;
+    }
+
     if (n === 13 || n === 32 || k === 'Enter' || k === ' ' || c === 'Space' || c === 'NumpadEnter') {
-      beginTutorial();
-      return false;
-    }
-    if (c === 'ArrowDown' || k === 'ArrowDown' || n === 40 || n === 83) {
       beginTutorial();
       return false;
     }
