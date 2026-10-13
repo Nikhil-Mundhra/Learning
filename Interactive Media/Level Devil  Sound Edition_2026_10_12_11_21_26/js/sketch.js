@@ -122,11 +122,29 @@ const GameStorage = {
 };
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
+  // p5 1.9.4's accessible grid output ignores translate() and indexes its 10x10
+  // grid with negative locations for sprites drawn at negative local coords
+  // (doors, player), crashing draw(). Screen-reader output is intentionally
+  // disabled; the Web Editor's "Accessible Outputs" setting can enable it.
+  if (typeof p5 !== 'undefined' && p5.prototype) {
+    p5.prototype._updateGridOutput = function () {};
+    p5.prototype._updateTextOutput = function () {};
+    p5.prototype._updateAccsOutput = function () {};
+  }
+  const cnv = createCanvas(windowWidth, windowHeight);
   textFont('monospace');
   layout();
   buildBackdrop(FIELD.w);
   loadArtwork();
+
+  if (cnv && cnv.elt) {
+    cnv.elt.setAttribute('tabindex', '0');
+    cnv.elt.style.outline = 'none';
+    cnv.elt.focus();
+  }
+  if (typeof window !== 'undefined') {
+    window.focus();
+  }
 
   const savedSkin = GameStorage.getNum('larpdevil.skin', -1);
   if (savedSkin >= 0 && savedSkin < SKINS.length) skinIndex = savedSkin;
@@ -368,6 +386,21 @@ function draw() {
   translate(0, view.oy);
   scale(view.s);
   drawScene();
+
+  if (typeof document !== 'undefined' && !document.hasFocus()) {
+    push();
+    fill(0, 0, 0, 160);
+    rect(FIELD.x, FIELD.y, FIELD.w, FIELD.h);
+    fill('#ffffff');
+    textAlign(CENTER, CENTER);
+    textSize(18);
+    text('CLICK GAME TO ACTIVATE CONTROLS', FIELD.x + FIELD.w / 2, FIELD.y + FIELD.h / 2);
+    textSize(11);
+    fill(C.amber);
+    text('(Click anywhere in this window to focus keyboard)', FIELD.x + FIELD.w / 2, FIELD.y + FIELD.h / 2 + 28);
+    pop();
+  }
+
   pop();
 }
 
@@ -375,11 +408,54 @@ function controlled() {
   return level.doorMode ? level.door : player;
 }
 
-// p5 2.x dropped numeric keycodes from keyIsDown(); 1.x only tracks them.
-// Passing both forms is safe: a miss is a plain false, never a throw.
+// ==========================================
+// BULLETPROOF INPUT SYSTEM & KEYBOARD TRACKING
+// ==========================================
+const activeKeys = new Set();
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', e => {
+    activeKeys.add(e.keyCode);
+    activeKeys.add(e.which);
+    if (e.code) activeKeys.add(e.code);
+    if (e.key) {
+      activeKeys.add(e.key);
+      activeKeys.add(e.key.toLowerCase());
+      activeKeys.add(e.key.toUpperCase());
+    }
+  }, { capture: true });
+
+  window.addEventListener('keyup', e => {
+    activeKeys.delete(e.keyCode);
+    activeKeys.delete(e.which);
+    if (e.code) activeKeys.delete(e.code);
+    if (e.key) {
+      activeKeys.delete(e.key);
+      activeKeys.delete(e.key.toLowerCase());
+      activeKeys.delete(e.key.toUpperCase());
+    }
+  }, { capture: true });
+
+  window.addEventListener('blur', () => {
+    activeKeys.clear();
+  });
+
+  window.addEventListener('pointerdown', () => {
+    window.focus();
+    const cv = document.querySelector('canvas');
+    if (cv) cv.focus();
+  });
+}
+
 function keyAny() {
   for (let i = 0; i < arguments.length; i++) {
-    if (keyIsDown(arguments[i])) return true;
+    const a = arguments[i];
+    if (activeKeys.has(a)) return true;
+    if (typeof a === 'number' && typeof keyIsDown === 'function') {
+      try {
+        if (keyIsDown(a)) return true;
+      } catch (_) {}
+    }
   }
   return false;
 }
@@ -396,10 +472,7 @@ function codeNum() {
   return typeof keyCode === 'number' ? keyCode : -1;
 }
 
-function isNavKey() {
-  const k = keyVal();
-  const c = codeVal();
-  const n = codeNum();
+function isNavKey(k = keyVal(), c = codeVal(), n = codeNum()) {
   return (
     ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Space'].includes(k) ||
     ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(c) ||
@@ -1697,7 +1770,13 @@ function drawTitle() {
   fill('#d0c8b7');
   textAlign(CENTER, CENTER);
   textSize(10);
-  text('↑ / ↓ MOVE   ← / → SELECT   ENTER BEGIN', center, 497);
+  const needsFocus = typeof document !== 'undefined' && typeof document.hasFocus === 'function' && !document.hasFocus();
+  if (needsFocus && floor(millis() / 500) % 2 === 0) {
+    fill(C.amber);
+    text('CLICK ANYWHERE TO ENABLE CONTROLS', center, 497);
+  } else {
+    text('↑ / ↓ MOVE   ← / → SELECT   ENTER BEGIN', center, 497);
+  }
 }
 
 function beginTutorial() {
@@ -3271,32 +3350,32 @@ function touchStarted() {
   return false;
 }
 
-function keyPressed() {
+function keyPressed(e) {
   initAudioContext();
   startBackgroundMusic();
 
-  if (settingsOpen && (keyVal() === 'Escape' || codeVal() === 'Escape')) {
+  const k = (e && e.key) || keyVal();
+  const c = (e && e.code) || codeVal();
+  const n = (e && (e.keyCode || e.which)) || codeNum();
+
+  if (settingsOpen && (k === 'Escape' || c === 'Escape' || n === 27)) {
     settingsOpen = false;
     return false;
   }
 
   if (state === 'title') {
-    const k = keyVal();
-    const c = codeVal();
-    const n = codeNum();
-
-    if (c === 'ArrowDown' || k === 'ArrowDown' || n === 40) {
+    if (c === 'ArrowDown' || k === 'ArrowDown' || n === 40 || k === 's' || k === 'S' || c === 'KeyS') {
       titleFocus = titleFocus === 'skin' ? 'theme' : 'begin';
       return false;
     }
-    if (c === 'ArrowUp' || k === 'ArrowUp' || n === 38) {
+    if (c === 'ArrowUp' || k === 'ArrowUp' || n === 38 || k === 'w' || k === 'W' || c === 'KeyW') {
       titleFocus = titleFocus === 'begin' ? 'theme' : 'skin';
       return false;
     }
 
     const direction =
-      c === 'ArrowLeft' || k === 'ArrowLeft' || n === 37 || n === 65 ? -1 :
-      c === 'ArrowRight' || k === 'ArrowRight' || n === 39 || n === 68 ? 1 :
+      (c === 'ArrowLeft' || k === 'ArrowLeft' || n === 37 || k === 'a' || k === 'A' || c === 'KeyA' || n === 65) ? -1 :
+      (c === 'ArrowRight' || k === 'ArrowRight' || n === 39 || k === 'd' || k === 'D' || c === 'KeyD' || n === 68) ? 1 :
       0;
     if (direction !== 0) {
       if (titleFocus === 'skin') {
@@ -3315,7 +3394,7 @@ function keyPressed() {
   }
 
   if (state === 'tutorialControls') {
-    if ([13, 32].includes(codeNum()) || keyVal() === 'Enter' || keyVal() === ' ' || keyVal() === 'Escape') {
+    if (n === 13 || n === 32 || k === 'Enter' || k === ' ' || c === 'Space' || k === 'Escape' || c === 'NumpadEnter') {
       startGame();
       return false;
     }
@@ -3323,7 +3402,7 @@ function keyPressed() {
   }
 
   if (state === 'tutorialAudio') {
-    if ([13, 32].includes(codeNum()) || keyVal() === 'Enter' || keyVal() === ' ') {
+    if (n === 13 || n === 32 || k === 'Enter' || k === ' ' || c === 'Space' || c === 'NumpadEnter') {
       // Must be calibrated to proceed!
       if (humCalibration.recorded) {
         if (tutorialReturnState === 'play') resumeGame();
@@ -3331,7 +3410,7 @@ function keyPressed() {
       }
       return false;
     }
-    if (keyVal() === 'Escape') {
+    if (k === 'Escape' || n === 27) {
       // Compulsory - cannot escape if not calibrated
       if (humCalibration.recorded) {
         if (tutorialReturnState === 'play') resumeGame();
@@ -3343,8 +3422,7 @@ function keyPressed() {
   }
 
   if (state === 'ending') {
-    const n = codeNum();
-    if (n === 13 || n === 32 || keyVal() === 'Enter' || keyVal() === ' ' || codeVal() === 'Space') {
+    if (n === 13 || n === 32 || k === 'Enter' || k === ' ' || c === 'Space') {
       state = 'title';
       titleT = 0;
       return false;
@@ -3352,15 +3430,18 @@ function keyPressed() {
     return true;
   }
 
-  if (keyVal() === 'r' || keyVal() === 'R') resetLevel();
+  if (k === 'r' || k === 'R' || c === 'KeyR' || n === 82) resetLevel();
 
-  if (isNavKey()) {
+  if (isNavKey(k, c, n)) {
     return false;
   }
 }
 
-function keyReleased() {
-  if (isNavKey()) {
+function keyReleased(e) {
+  const k = (e && e.key) || keyVal();
+  const c = (e && e.code) || codeVal();
+  const n = (e && (e.keyCode || e.which)) || codeNum();
+  if (isNavKey(k, c, n)) {
     return false;
   }
 }
