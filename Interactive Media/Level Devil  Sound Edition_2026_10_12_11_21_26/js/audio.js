@@ -74,6 +74,7 @@ let gateSound;
 let ladderSoundTimer = null;
 let ladderSoundActive = false;
 const activeSoundInstances = new Set();
+const ladderSoundInstances = new Set();
 
 function stopAllSoundEffects() {
   for (const instance of activeSoundInstances) {
@@ -83,6 +84,24 @@ function stopAllSoundEffects() {
     } catch (e) {}
   }
   activeSoundInstances.clear();
+
+  for (const instance of ladderSoundInstances) {
+    try {
+      instance.pause();
+      instance.currentTime = 0;
+    } catch (e) {}
+  }
+  ladderSoundInstances.clear();
+}
+
+function stopLadderSoundInstances() {
+  for (const instance of ladderSoundInstances) {
+    try {
+      instance.pause();
+      instance.currentTime = 0;
+    } catch (e) {}
+  }
+  ladderSoundInstances.clear();
 }
 
 function setSoundEffectsEnabled(enabled) {
@@ -105,7 +124,7 @@ function playSoundInstance(baseAudio, path, volume) {
     baseAudio.preload = 'auto';
     baseAudio.volume = volume;
     baseAudio.addEventListener('error', () => {
-      console.error(`Unable to load ${path}`, baseAudio.error);
+      logAudioIssue('Unable to load sound asset', path, baseAudio.error);
     });
   }
 
@@ -150,6 +169,14 @@ function playLadderSound() {
   });
 }
 
+function logAudioIssue(label, path, error) {
+  if (window.location.protocol === 'file:') {
+    console.warn(`${label} (${path}) failed while the page is loading from a file:// URL. Serve the project over localhost so the browser can load the MP3 assets.`);
+    return;
+  }
+  console.warn(`${label} (${path}):`, error);
+}
+
 function setLadderSoundActive(active) {
   active = active && soundEffectsEnabled;
   if (active === ladderSoundActive) return;
@@ -161,7 +188,7 @@ function setLadderSoundActive(active) {
       ladderSound.preload = 'auto';
       ladderSound.volume = 0.5;
       ladderSound.addEventListener('error', () => {
-        console.error('Unable to load ladder.mp3', ladderSound.error);
+        logAudioIssue('Unable to load ladder.mp3', 'assets/audio/ladder.mp3', ladderSound.error);
       });
     }
     playLadderSound();
@@ -297,7 +324,7 @@ function startBackgroundMusic() {
     backgroundMusic.loop = true;
     backgroundMusic.volume = 0.22;
     backgroundMusic.addEventListener('error', () => {
-      console.error('Unable to load background-music.mp3', backgroundMusic.error);
+      logAudioIssue('Unable to load background-music.mp3', 'assets/audio/background-music.mp3', backgroundMusic.error);
     });
   }
 
