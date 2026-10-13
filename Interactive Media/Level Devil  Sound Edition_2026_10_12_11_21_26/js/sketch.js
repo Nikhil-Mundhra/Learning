@@ -87,10 +87,10 @@ let view = { s: 1, oy: 0, slackTop: 0, visW: W };
 let endT = 0;
 
 function layout() {
-  view.s = min(windowHeight / H, windowWidth / 700);
+  view.s = windowHeight / H;
   view.visW = windowWidth / view.s;
-  view.oy = windowHeight - H * view.s;
-  view.slackTop = view.oy / view.s;
+  view.oy = 0;
+  view.slackTop = 0;
   FIELD.x = 0;
   FIELD.w = view.visW;
 }
@@ -322,7 +322,11 @@ function draw() {
   if (state === 'title') {
     titleT += dt;
     updateParticles(dt);
+    push();
+    translate(0, view.oy);
+    scale(view.s);
     drawTitle();
+    pop();
     return;
   }
 
@@ -331,14 +335,22 @@ function draw() {
       updateHumCalibration(dt, keyAny('h', 'H'));
     }
     updateParticles(dt);
+    push();
+    translate(0, view.oy);
+    scale(view.s);
     drawTutorial();
+    pop();
     return;
   }
 
   if (state === 'ending') {
     updateEnding(dt);
     updateParticles(dt);
+    push();
+    translate(0, view.oy);
+    scale(view.s);
     drawEnding();
+    pop();
     return;
   }
 
@@ -1502,18 +1514,22 @@ function drawScene() {
 }
 
 function swatchRect(i) {
-  const w = 92, gap = 24;
+  const avail = min(556, FIELD.w - 40);
+  const scaleRatio = min(1, avail / 556);
+  const w = 92 * scaleRatio, gap = 24 * scaleRatio;
   const total = SKINS.length * w + (SKINS.length - 1) * gap;
   return {
     x: FIELD.x + (FIELD.w - total) / 2 + i * (w + gap),
     y: 190,
     w,
-    h: 108
+    h: 108 * scaleRatio
   };
 }
 
 function themeRect(i) {
-  const w = 164, h = 54, gap = 12;
+  const avail = min(516, FIELD.w - 40);
+  const scaleRatio = min(1, avail / 516);
+  const w = 164 * scaleRatio, h = 54, gap = 12 * scaleRatio;
   const total = THEMES.length * w + (THEMES.length - 1) * gap;
   return {
     x: FIELD.x + (FIELD.w - total) / 2 + i * (w + gap),
@@ -1566,9 +1582,10 @@ function drawTitle() {
   buttons = [];
 
   const center = FIELD.w / 2;
+  const cardW = min(690, FIELD.w - 20);
   noStroke();
   fill(37, 39, 44, 218);
-  rect(center - 345, 48, 690, 500, 16);
+  rect(center - cardW / 2, 48, cardW, 500, 16);
 
   noStroke();
   textAlign(CENTER, CENTER);
@@ -1591,7 +1608,8 @@ function drawTitle() {
     const sel = i === skinIndex;
 
     noStroke();
-    fill(sel ? C.ink : 255, 251, 239, sel ? 255 : 150);
+    if (sel) fill(C.ink);
+    else fill(255, 251, 239, 150);
     rect(r.x, r.y, r.w, r.h, 8);
 
     noFill();
@@ -1605,13 +1623,14 @@ function drawTitle() {
     rect(r.x, r.y, r.w, r.h, 8);
     noStroke();
 
-    drawMiniPlayer(r.x + r.w / 2, r.y + 62, 1.05, sk);
+    const pScale = 1.05 * min(1, r.w / 92);
+    drawMiniPlayer(r.x + r.w / 2, r.y + 62 * (r.h / 108), pScale, sk);
 
     fill(sel ? C.white : C.ink);
     textStyle(sel ? BOLD : NORMAL);
-    textSize(10);
+    textSize(max(9, 10 * min(1, r.w / 92)));
     textAlign(CENTER, CENTER);
-    text(sk.name, r.x + r.w / 2, r.y + 80);
+    text(sk.name, r.x + r.w / 2, r.y + 80 * (r.h / 108));
 
     if (sel && titleFocus === 'skin') {
       fill(C.amber);
@@ -1691,13 +1710,13 @@ function drawTutorial() {
   drawBackdrop();
   noStroke();
   fill(37, 39, 44, 115);
-  rect(0, 0, width, height);
+  rect(0, 0, FIELD.w, H);
   buttons = [];
 
-  const cardW = min(760, width - 32);
-  const cardH = min(530, height - 32);
-  const x = (width - cardW) / 2;
-  const y = (height - cardH) / 2;
+  const cardW = min(760, FIELD.w - 32);
+  const cardH = min(530, H - 32);
+  const x = (FIELD.w - cardW) / 2;
+  const y = (H - cardH) / 2;
   const audioPage = state === 'tutorialAudio';
 
   noStroke();
@@ -2042,7 +2061,8 @@ function drawEndingScene() {
   const fx = FIELD.x, fy = FIELD.y, fw = FIELD.w, fh = FIELD.h;
 
   ctx.save();
-  roundPath(fx, fy, fw, fh, 11);
+  ctx.beginPath();
+  ctx.rect(fx, fy, fw, fh);
   ctx.clip();
 
   if (!endArt) {
@@ -2119,15 +2139,7 @@ function drawEndingScene() {
   } else {
     endCache = blitArt(ctx, endArt, endCache, fx, fy, fw, fh, 0, 0.54, 0.08);
   }
-
   ctx.restore();
-
-  noFill();
-  stroke(46, 86, 48, 80);
-  strokeWeight(2);
-  roundPath(fx, fy, fw, fh, 11);
-  drawingContext.stroke();
-  noStroke();
 }
 
 function drawEnding() {
@@ -2242,11 +2254,14 @@ function loadArtwork() {
   });
 }
 
-function ensureCache(img, cache, w) {
-  if (cache && cache.img === img && cache.w >= w) return cache;
+function ensureCache(img, cache, w, h = 0) {
+  const scale = Math.max(w / img.width, h / img.height);
+  const targetW = Math.ceil(img.width * scale);
+  const targetH = Math.ceil(img.height * scale);
+  if (cache && cache.img === img && cache.w >= targetW && cache.h >= targetH) return cache;
   const cv = document.createElement('canvas');
-  cv.width = Math.ceil(w);
-  cv.height = Math.ceil(w / (img.width / img.height));
+  cv.width = targetW;
+  cv.height = targetH;
   const g = cv.getContext('2d');
   g.imageSmoothingEnabled = true;
   g.imageSmoothingQuality = 'high';
@@ -2255,7 +2270,7 @@ function ensureCache(img, cache, w) {
 }
 
 function blitArt(ctx, img, cache, fx, fy, fw, fh, driftX, focus, dim) {
-  const c = ensureCache(img, cache, fw * 1.3 + 2);
+  const c = ensureCache(img, cache, fw * 1.3 + 2, fh);
   const dw = c.w;
   const dh = c.h;
 
@@ -2305,7 +2320,8 @@ function drawBackdrop() {
   const drift = -(controlled().x - 76);
 
   ctx.save();
-  roundPath(fx, fy, fw, fh, 11);
+  ctx.beginPath();
+  ctx.rect(fx, fy, fw, fh);
   ctx.clip();
 
   const art = themeIndex === 1 ? bgArt : themeIndex === 2 ? endArt : null;
@@ -2381,13 +2397,6 @@ function drawBackdrop() {
     }
   }
 
-  if (themeIndex !== 2) {
-    const fog = ctx.createLinearGradient(0, fy + fh - 112, 0, fy + fh);
-    fog.addColorStop(0, 'rgba(248, 222, 170, 0)');
-    fog.addColorStop(1, 'rgba(248, 222, 170, 0.38)');
-    ctx.fillStyle = fog;
-    ctx.fillRect(fx, fy + fh - 112, fw, 112);
-  }
 
   const t = gameTime;
   for (const e of themeIndex !== 2 ? bgEmbers : []) {
@@ -2420,15 +2429,7 @@ function drawBackdrop() {
   vig.addColorStop(1, 'rgba(37, 39, 44, 0.30)');
   ctx.fillStyle = vig;
   ctx.fillRect(fx, fy, fw, fh);
-
   ctx.restore();
-
-  noFill();
-  stroke(58, 52, 42, 90);
-  strokeWeight(2);
-  roundPath(fx, fy, fw, fh, 11);
-  drawingContext.stroke();
-  noStroke();
 }
 
 function drawWorld() {
@@ -3204,10 +3205,6 @@ function mousePressed() {
   initAudioContext();
   startBackgroundMusic();
 
-  if (state === 'tutorialControls' || state === 'tutorialAudio') {
-    return clickAt(mouseX, mouseY);
-  }
-
   const x = mouseX / view.s;
   const y = (mouseY - view.oy) / view.s;
 
@@ -3249,9 +3246,6 @@ function touchStarted() {
   startBackgroundMusic();
 
   if (touches.length) {
-    if (state === 'tutorialControls' || state === 'tutorialAudio') {
-      return clickAt(touches[0].x, touches[0].y);
-    }
     const x = touches[0].x / view.s;
     const y = (touches[0].y - view.oy) / view.s;
     if (state === 'title') {
