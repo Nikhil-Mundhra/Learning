@@ -212,19 +212,30 @@ function buildLevel(i) {
     },
     {
       title: 'THE DOOR COMES TO YOU',
-      hint: 'You cannot move. The door is yours to steer — and to hop.',
+      hint: 'Steer the door home! Leap the pits and HUM to keep the door open to reach the player.',
       doorMode: true,
-      worldW: 1500,
-      platforms: [ground(40, 1460)],
+      worldW: 1560,
+      platforms: [
+        ground(40, 240),
+        ledge(300, FLOOR, 90, 'crumble'),
+        ground(430, 220),
+        ledge(690, FLOOR, 90, 'moving'),
+        ground(820, 240),
+        ledge(1100, FLOOR, 90, 'crumble'),
+        ground(1230, 310)
+      ],
       traps: [
-        trap('laser', 1310, 196, 9, 274, 0, 0),
-        trap('pop', 1150, FLOOR, 44, 32, 950, 0),
-        trap('laser', 990, 240, 9, 230, 0, 0.68),
-        trap('laser', 830, 424, 9, 46, 0, 1.36),
-        trap('pop', 670, FLOOR, 44, 32, 470, 0),
-        trap('laser', 510, 300, 9, 170, 0, 1.02),
-        trap('laser', 350, 420, 9, 50, 0, 0.34),
-        trap('laser', 190, 220, 9, 250, 0, 1.7)
+        trap('laser', 1340, 196, 9, 274, 0, 0),
+        trap('pop', 1240, FLOOR, 44, 32, 1000, 0),
+        trap('fall', 1050, 150, 48, 48, 880),
+        trap('laser', 960, 240, 9, 230, 0, 0.68),
+        trap('saw', 840, FLOOR - 32, 32, 32, 0, 0.4),
+        trap('laser', 760, 424, 9, 46, 0, 1.36),
+        trap('pop', 580, FLOOR, 44, 32, 450, 0),
+        trap('fall', 460, 160, 48, 48, 380),
+        trap('laser', 380, 300, 9, 170, 0, 1.02),
+        trap('saw', 250, FLOOR - 32, 32, 32, 0, 0.8),
+        trap('laser', 170, 220, 9, 250, 0, 1.7)
       ]
     }
   ];
