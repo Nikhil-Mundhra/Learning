@@ -36,18 +36,19 @@ function setup() {
     window.focus();
   }
 
-  // TEMP DIAGNOSTIC: remove once input works in the Web Editor.
-  if (typeof document !== 'undefined') {
-    const badge = document.createElement('div');
-    badge.style.cssText = 'position:fixed;left:2px;top:2px;z-index:99999;font:10px monospace;' +
-      'color:#0f0;background:rgba(0,0,0,.75);padding:2px 4px;pointer-events:none;white-space:pre';
-    document.body.appendChild(badge);
-    let lastKey = '-';
-    window.addEventListener('keydown', e => { lastKey = e.code || e.key; }, true);
-    setInterval(() => {
-      badge.textContent = 'v3 focus:' + document.hasFocus() + ' key:' + lastKey;
-    }, 200);
-  }
+  // TEMP DIAGNOSTIC (disabled): on-screen "v3 focus:… key:…" badge for debugging
+  // keyboard focus in the p5 Web Editor. Uncomment to re-enable.
+  // if (typeof document !== 'undefined') {
+  //   const badge = document.createElement('div');
+  //   badge.style.cssText = 'position:fixed;left:2px;top:2px;z-index:99999;font:10px monospace;' +
+  //     'color:#0f0;background:rgba(0,0,0,.75);padding:2px 4px;pointer-events:none;white-space:pre';
+  //   document.body.appendChild(badge);
+  //   let lastKey = '-';
+  //   window.addEventListener('keydown', e => { lastKey = e.code || e.key; }, true);
+  //   setInterval(() => {
+  //     badge.textContent = 'v3 focus:' + document.hasFocus() + ' key:' + lastKey;
+  //   }, 200);
+  // }
 
   const savedSkin = GameStorage.getNum('larpdevil.skin', -1);
   if (savedSkin >= 0 && savedSkin < SKINS.length) skinIndex = savedSkin;
@@ -157,6 +158,7 @@ function draw() {
 
   if (state !== 'play') setLadderSoundActive(false);
   processAudio(now);
+  updateMusicDuck();
 
   if (state === 'title') {
     titleT += dt;
@@ -171,7 +173,7 @@ function draw() {
 
   if (state === 'tutorialControls' || state === 'tutorialAudio') {
     if (state === 'tutorialAudio') {
-      updateHumCalibration(dt, keyAny('h', 'H'));
+      updateHumCalibration(dt, keyAny(72, 'KeyH', 'h', 'H'));
     }
     updateParticles(dt);
     push();

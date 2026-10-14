@@ -113,9 +113,8 @@ function updateWinAnim(dt) {
     if (levelIndex === 1) {
       // Completed Level 2 -> Unlock Voice Powers and prompt compulsory hum setup
       levelIndex = 2;
-      tutorialReturnState = 'play';
-      state = 'tutorialAudio';
-      resetLevel(false);
+      resetLevel(false); // sets state = 'play', so the tutorial state must be set afterwards
+      openAudioTutorial('play');
       return;
     }
     levelIndex = (levelIndex + 1) % 12;

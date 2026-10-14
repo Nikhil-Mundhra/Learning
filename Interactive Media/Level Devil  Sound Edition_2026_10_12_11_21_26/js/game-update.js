@@ -3,14 +3,14 @@
 // ==========================================
 
 function updateGame(dt, now) {
-  const humKey = keyAny('h', 'H');
+  const humKey = keyAny(72, 'KeyH', 'h', 'H');
   if (handleVoicePowers(dt, humKey)) return;
 
-  const worldDt = timeFreezeActive ? 0 : dt;
+  const worldDt = (timeFreezeActive || rewindActive) ? 0 : dt;
   gameTime += worldDt;
   const p = player;
 
-  if (updateGateRelocation(worldDt)) {
+  if (!rewindActive && updateGateRelocation(worldDt)) {
     setLadderSoundActive(false);
     return;
   }

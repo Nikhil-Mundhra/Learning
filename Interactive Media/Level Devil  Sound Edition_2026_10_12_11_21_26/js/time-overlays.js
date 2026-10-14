@@ -41,7 +41,7 @@ function drawTimeFreezeHUD() {
   textAlign(CENTER, CENTER);
   textStyle(BOLD);
   textSize(11);
-  text(`❄ TIME FROZEN (${timeFreezeLeft.toFixed(1)}s) ❄`, FIELD.w / 2, by + 14);
+  text(`TIME FROZEN (${timeFreezeLeft.toFixed(1)}s)`, FIELD.w / 2, by + 14);
 
   // Depleting gauge
   fill('#20242a');
@@ -92,7 +92,7 @@ function drawRewindHUD() {
   textAlign(CENTER, CENTER);
   textStyle(BOLD);
   textSize(12);
-  text('⏪ REWINDING TIME (-2.0s) ⏪', FIELD.w / 2, by + bannerH / 2);
+  text('REWINDING TIME (-2.0s)', FIELD.w / 2, by + bannerH / 2);
   textStyle(NORMAL);
   pop();
 }

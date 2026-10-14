@@ -12,14 +12,15 @@ function drawControls() {
   const row = (bx, bw, label, style, action) => uiButton(bx, buttonY, bw, 34, label, style, action);
   const navX = fw - R - 80;
 
-  row(R, 122, micState === 'on' ? 'VOICE: READY' : 'VOICE SETUP', micState === 'on' ? 'on' : '', () => {
-    tutorialReturnState = 'play';
-    state = 'tutorialAudio';
-  });
-  row(R + 130, 72, 'RETRY', '', () => resetLevel());
+  // Voice setup button moved into the settings panel (see drawSettingsPanel).
+  // row(R, 122, micState === 'on' ? 'VOICE: READY' : 'VOICE SETUP', micState === 'on' ? 'on' : '', () => {
+  //   tutorialReturnState = 'play';
+  //   state = 'tutorialAudio';
+  // });
+  row(R, 72, 'RETRY', '', () => resetLevel());
 
   const eachW = min(150, max(104, floor((fw - 390) / 2)));
-  const gap = 12;
+  const gap = 18; // 12px of box padding (6 per side) + 6px visible gap
   const totalMetersW = eachW * 2 + gap;
   const startMetersX = (fw - totalMetersW) / 2;
 
@@ -66,7 +67,7 @@ function drawControls() {
     textAlign(CENTER, CENTER);
     textSize(9);
     text(
-      doorHumOpen >= 0.4 ? '🚪 DOOR OPEN!' : 'HUM: OPEN DOOR',
+      doorHumOpen >= 0.4 ? 'DOOR OPEN!' : 'HUM: OPEN DOOR',
       freezeX + eachW / 2, H - 44
     );
     textStyle(NORMAL);
@@ -95,14 +96,14 @@ function drawControls() {
     textSize(9);
     let pauseLabel = '';
     if (timeFreezeActive) {
-      pauseLabel = `❄ FROZEN ${timeFreezeLeft.toFixed(1)}s`;
+      pauseLabel = `FROZEN ${timeFreezeLeft.toFixed(1)}s`;
     } else if (timeFreezeUsed) {
       const usedDisplay = timeFreezeUsedAmount.toFixed(1);
       pauseLabel = `FREEZE USED (${usedDisplay}/3)`;
     } else if (maxDur <= 0) {
       pauseLabel = 'UNLOCKED AT LVL 3';
     } else {
-      pauseLabel = `HUM: PAUSE (${Math.round(maxDur)}s)`;
+      pauseLabel = micState === 'on' ? `HUM: PAUSE (${Math.round(maxDur)}s)` : `HOLD H: PAUSE (${Math.round(maxDur)}s)`;
     }
 
     text(pauseLabel, freezeX + eachW / 2, H - 44);
@@ -128,25 +129,26 @@ function drawControls() {
     textSize(9);
     text(
       rewindActive
-        ? '⏪ REWINDING 2s'
+        ? 'REWINDING 2s'
         : timeFreezeUsed
           ? 'REWIND USED (1/1)'
           : micState === 'on'
             ? 'HUM: REWIND 2s'
-            : 'HUM / HOLD "H"',
+            : 'HOLD H: REWIND',
       freezeX + eachW / 2, H - 44
     );
     textStyle(NORMAL);
   }
 
-  row(navX, 40, '\u2039', '', () => {
-    levelIndex = (levelIndex + 11) % 12;
-    resetLevel();
-  });
-  row(navX + 45, 40, '\u203a', '', () => {
-    levelIndex = (levelIndex + 1) % 12;
-    resetLevel();
-  });
+  // Previous / next level buttons (disabled). Uncomment to restore level skipping.
+  // row(navX, 40, '\u2039', '', () => {
+  //   levelIndex = (levelIndex + 11) % 12;
+  //   resetLevel();
+  // });
+  // row(navX + 45, 40, '\u203a', '', () => {
+  //   levelIndex = (levelIndex + 1) % 12;
+  //   resetLevel();
+  // });
 
   const deathsLabel = `DEATHS ${deaths}`;
   textSize(11);
@@ -180,7 +182,7 @@ function drawSettingsPanel(fieldWidth, deathsX) {
   if (!settingsOpen) return;
 
   const panelW = 202;
-  const panelH = 183;
+  const panelH = 215;
   const x = max(12, min(fieldWidth - panelW - 12, deathsX + 2));
   const y = 58;
 
@@ -220,6 +222,10 @@ function drawSettingsPanel(fieldWidth, deathsX) {
     gameSettings.particles = !gameSettings.particles;
     if (!gameSettings.particles) particles = [];
     GameStorage.set('larpdevil.particles', gameSettings.particles);
+  });
+  uiButton(rowX, firstY + 128, rowW, rowH, micState === 'on' ? 'VOICE: READY' : 'VOICE SETUP', micState === 'on' ? 'on' : '', () => {
+    settingsOpen = false;
+    openAudioTutorial('play');
   });
 }
 

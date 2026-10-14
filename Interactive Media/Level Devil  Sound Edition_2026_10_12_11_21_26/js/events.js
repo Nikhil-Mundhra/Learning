@@ -124,22 +124,12 @@ function keyPressed(e) {
   }
 
   if (state === 'tutorialAudio') {
-    if (n === 13 || n === 32 || k === 'Enter' || k === ' ' || c === 'Space' || c === 'NumpadEnter') {
-      // Must be calibrated to proceed!
-      if (humCalibration.recorded) {
-        if (tutorialReturnState === 'play') resumeGame();
-        else startGame();
-      }
-      return false;
-    }
     if (k === 'Escape' || n === 27) {
-      // Compulsory - cannot escape if not calibrated
-      if (humCalibration.recorded) {
-        if (tutorialReturnState === 'play') resumeGame();
-        else startGame();
-      }
+      // Compulsory - cannot leave until calibrated
+      proceedFromAudioTutorial();
       return false;
     }
+    if (handleAudioTutorialKey(k, c, n)) return false;
     return true;
   }
 

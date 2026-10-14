@@ -106,12 +106,16 @@ assets/
 
 If `hell.png` or `nature.png` is missing, the game falls back to a procedural backdrop and ending scene (a console warning is logged). A missing `gear.svg` only logs an error.
 
+### Voice Powers & Rewind Design
+
+- **Time Freeze (Pause):** Freezes trap movement and world simulation while humming (or holding `H`), allowing the player to sprint past hazards safely.
+- **Time Rewind (Reverse):** Stepping into surprise traps or sudden hazards can be reversed! The world (traps, moving platforms, crumbling floors, gates) runs backward in time by up to 2 seconds, while the **player is NOT rewound and remains completely movable**, free to run, jump, reposition, or dodge away from incoming danger.
+- **Emoji Free:** The UI, HUD banners, and tutorial avoid all emoji glyphs in favor of clean procedural icons and typography.
+
 ## Temporary diagnostics
 
 - `state.js` logs a `[LevelDevil] sketch.js build: …` line on load.
-- `setup()` adds a small green on-screen badge (`v3 focus:… key:…`) showing the build, focus state and last key.
-
-Both were added to debug the p5 Web Editor and can be deleted once input is confirmed working.
+- `setup()` has the temporary green on-screen badge (`v3 focus:… key:…`) commented out; it can be re-enabled if keyboard focus debugging is ever needed again.
 
 ## Adding or changing things
 

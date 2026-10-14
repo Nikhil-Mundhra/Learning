@@ -17,7 +17,8 @@ function handleVoicePowers(dt, humKey) {
 
   if (selectedVoicePower === 'rewind') {
     // ------------------------------------------
-    // REWIND POWER: REVERSE TIME BY 2 SECONDS
+    // REWIND POWER: REVERSE WORLD TIME BY UP TO 2 SECONDS
+    // The player is NOT affected and remains fully movable!
     // ------------------------------------------
     if (!timeFreezeUsed && !rewindActive && (isHumming || humKey) && timeHistory.length > 5) {
       rewindActive = true;
@@ -27,53 +28,98 @@ function handleVoicePowers(dt, humKey) {
     }
 
     if (rewindActive) {
-      // Step backwards through timeHistory (rewind speed ~ 2.5x)
-      const steps = min(timeHistory.length, 3);
+      // Step backwards through world history (2 snapshots per frame = ~2x rewind speed)
+      const steps = min(timeHistory.length, 2);
       for (let s = 0; s < steps; s++) {
         if (timeHistory.length > 0) {
           const snap = timeHistory.pop();
-          player.x = snap.x;
-          player.y = snap.y;
-          player.vx = snap.vx;
-          player.vy = snap.vy;
-          player.grounded = snap.grounded;
-          player.face = snap.face;
-          stamina = snap.stamina;
           gameTime = snap.time;
           if (snap.traps) {
             snap.traps.forEach((st, i) => {
-              if (level.traps[i]) {
-                level.traps[i].active = st.active;
-                level.traps[i].timer = st.timer;
-                level.traps[i].value = st.value;
-                level.traps[i].done = st.done;
+              const t = level.traps[i];
+              if (t) {
+                t.x = st.x;
+                t.y = st.y;
+                t.active = st.active;
+                t.timer = st.timer;
+                t.value = st.value;
+                t.done = st.done;
+                t.nearTimer = st.nearTimer;
               }
             });
+          }
+          if (snap.platforms) {
+            snap.platforms.forEach((sp, i) => {
+              const p = level.platforms[i];
+              if (p) {
+                if (p.kind !== 'moving') p.x = sp.x;
+                p.timer = sp.timer;
+                p.gone = sp.gone;
+              }
+            });
+          }
+          if (snap.door && level.door) {
+            level.door.x = snap.door.x;
+            level.door.y = snap.door.y;
+            level.door.locked = snap.door.locked;
+          }
+          if (snap.gateEvent && level.gateEvent) {
+            level.gateEvent.phase = snap.gateEvent.phase;
+            level.gateEvent.timer = snap.gateEvent.timer;
+            level.gateEvent.closedY = snap.gateEvent.closedY;
+          }
+          if (snap.exitSwitch && level.exitSwitch) {
+            level.exitSwitch.active = snap.exitSwitch.active;
+          }
+          if (snap.hiddenLadder && level.hiddenLadder) {
+            level.hiddenLadder.revealed = snap.hiddenLadder.revealed;
           }
         }
       }
 
       if (timeHistory.length === 0 || gameTime <= rewindTargetTime) {
         rewindActive = false;
-        timeFreezeUsed = true; // Once per level / reset!
+        timeFreezeUsed = true; // Single use per level/reset
         playUnfreezeSound();
         if (backgroundMusic) backgroundMusic.playbackRate = 1.0;
       }
 
-      updateCamera();
-      return true; // Freeze keyboard input & game physics while rewinding!
-    } else {
-      // Record rolling snapshot of the past ~2.6 seconds
+      // Player remains completely movable - do not freeze or return true!
+      return false;
+    } else if (!timeFreezeUsed) {
+      // Record rolling snapshot of the world over the past ~2.6 seconds
       timeHistory.push({
         time: gameTime,
-        x: player.x,
-        y: player.y,
-        vx: player.vx,
-        vy: player.vy,
-        grounded: player.grounded,
-        face: player.face,
-        stamina,
-        traps: level.traps.map(t => ({ active: t.active, timer: t.timer, value: t.value, done: t.done }))
+        traps: level.traps.map(t => ({
+          x: t.x,
+          y: t.y,
+          active: t.active,
+          timer: t.timer,
+          value: t.value,
+          done: t.done,
+          nearTimer: t.nearTimer
+        })),
+        platforms: level.platforms.map(p => ({
+          x: p.x,
+          timer: p.timer,
+          gone: p.gone
+        })),
+        door: level.door ? {
+          x: level.door.x,
+          y: level.door.y,
+          locked: level.door.locked
+        } : null,
+        gateEvent: level.gateEvent ? {
+          phase: level.gateEvent.phase,
+          timer: level.gateEvent.timer,
+          closedY: level.gateEvent.closedY
+        } : null,
+        exitSwitch: level.exitSwitch ? {
+          active: level.exitSwitch.active
+        } : null,
+        hiddenLadder: level.hiddenLadder ? {
+          revealed: level.hiddenLadder.revealed
+        } : null
       });
       while (timeHistory.length > 1 && timeHistory[0].time < gameTime - 2.6) {
         timeHistory.shift();

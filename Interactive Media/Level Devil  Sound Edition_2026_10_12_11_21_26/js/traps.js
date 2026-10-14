@@ -3,6 +3,7 @@
 // ==========================================
 
 function checkTrapTrigger(t, victim, dt) {
+  if (typeof rewindActive !== 'undefined' && rewindActive) return;
   if (t.waitNearSpike && !t.active) {
     const spike = level.traps.find(candidate => candidate.type === 'pop');
     const nearSpike = spike &&

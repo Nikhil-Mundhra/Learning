@@ -163,10 +163,9 @@ function drawTitle() {
     textStyle(NORMAL);
 
     if (selected) {
+      noStroke();
       fill(C.amber);
-      textAlign(RIGHT, CENTER);
-      textSize(14);
-      text('✓', r.x + r.w - 12, r.y + r.h / 2);
+      circle(r.x + r.w - 14, r.y + r.h / 2, 6);
       if (titleFocus === 'theme') {
         textAlign(CENTER, CENTER);
         textSize(13);

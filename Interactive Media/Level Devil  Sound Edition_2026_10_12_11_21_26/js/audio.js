@@ -346,6 +346,22 @@ function setMusicEnabled(enabled) {
   startBackgroundMusic();
 }
 
+// Music bleeds into the microphone and hurts hum detection, so duck it instead of
+// muting: quieter whenever the mic is live, quietest on the voice-setup screen.
+const MUSIC_VOLUME_NORMAL = 0.22;
+const MUSIC_VOLUME_MIC_ON = 0.12;
+const MUSIC_VOLUME_CALIBRATING = 0.02;
+
+function updateMusicDuck() {
+  if (!backgroundMusic) return;
+  const calibrating = (typeof state !== 'undefined' && state === 'tutorialAudio') || humCalibration.recording;
+  const target = calibrating
+    ? MUSIC_VOLUME_CALIBRATING
+    : micState === 'on' ? MUSIC_VOLUME_MIC_ON : MUSIC_VOLUME_NORMAL;
+  const next = backgroundMusic.volume + (target - backgroundMusic.volume) * 0.12;
+  backgroundMusic.volume = Math.abs(next - target) < 0.002 ? target : next;
+}
+
 // ==========================================
 // STATE MANAGEMENT & CALIBRATION
 // ==========================================
@@ -366,27 +382,32 @@ function resetTimeFreeze(levelIdx = (typeof levelIndex !== 'undefined' ? levelIn
 }
 
 function startHumCalibration() {
-  if (micState !== 'on') {
-    enableMic();
-    return;
-  }
   humCalibration.recording = true;
   humCalibration.progress = 0;
   humCalibration.samples = [];
   humCalibration.silenceTimer = 0;
-  humCalibration.statusMessage = 'Humming... keep holding for 3 seconds whole!';
+  humCalibration.statusMessage = micState === 'on'
+    ? 'Humming... keep holding for 3 seconds!'
+    : 'Holding H... hold for 3 seconds without stopping!';
 }
 
 function updateHumCalibration(dt, manualHum = false) {
-  if (!humCalibration.recording) return;
-
   const activeHum = isHumming || manualHum;
+
+  // Automatically begin recording if the player holds H or hums on the calibration screen
+  if (!humCalibration.recording && !humCalibration.recorded && activeHum) {
+    startHumCalibration();
+  }
+
+  if (!humCalibration.recording) return;
 
   if (activeHum) {
     humCalibration.silenceTimer = 0;
     humCalibration.progress += dt;
     if (humPitch > 0) humCalibration.samples.push(humPitch);
-    humCalibration.statusMessage = `Recording hum... ${humCalibration.progress.toFixed(1)}s / 3.0s`;
+    humCalibration.statusMessage = manualHum
+      ? `Holding H... ${humCalibration.progress.toFixed(1)}s / 3.0s`
+      : `Recording hum... ${humCalibration.progress.toFixed(1)}s / 3.0s`;
 
     if (humCalibration.progress >= humCalibration.target) {
       humCalibration.progress = humCalibration.target;
@@ -395,16 +416,18 @@ function updateHumCalibration(dt, manualHum = false) {
       humCalibration.avgPitch = humCalibration.samples.length > 0
         ? Math.round(humCalibration.samples.reduce((a, b) => a + b, 0) / humCalibration.samples.length)
         : 180;
-      humCalibration.statusMessage = `✓ Calibrated 3s hum (~${humCalibration.avgPitch} Hz)! Ability ready.`;
+      humCalibration.statusMessage = manualHum
+        ? 'Keyboard hum calibrated! Ability ready.'
+        : `Calibrated 3s hum (~${humCalibration.avgPitch} Hz)! Ability ready.`;
       playSuccessSound();
     }
   } else {
     humCalibration.silenceTimer += dt;
-    // If player stops humming for > 0.35s before reaching 3.0s:
+    // If player stops humming / holding H for > 0.35s before reaching 3.0s:
     if (humCalibration.silenceTimer > 0.35 && humCalibration.progress > 0) {
       humCalibration.progress = 0;
       humCalibration.samples = [];
-      humCalibration.statusMessage = 'Hum dropped! Must hold for 3 seconds whole without stopping.';
+      humCalibration.statusMessage = 'Hum dropped! Hold H or hum for 3 full seconds without stopping.';
     }
   }
 }
